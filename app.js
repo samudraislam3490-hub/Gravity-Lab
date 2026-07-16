@@ -13,7 +13,7 @@
   const txtPlayPause = document.getElementById('txt-play-pause');
   const btnReset = document.getElementById('btn-reset');
   const btnClear = document.getElementById('btn-clear');
-  const btnPresentation = document.getElementById('btn-presentation');
+  const btnInstructions = document.getElementById('btn-instructions');
   
   const sliderGravity = document.getElementById('slider-gravity');
   const valGravityReadout = document.getElementById('val-gravity-readout');
@@ -48,11 +48,10 @@
   const dragLine = document.getElementById('drag-line');
   const dragCircle = document.getElementById('drag-circle');
   
-  // Presentation Modal Elements
-  const modalPresentation = document.getElementById('modal-presentation');
-  const btnCloseModal = document.getElementById('btn-close-modal');
-  const btnCloseModalFooter = document.getElementById('btn-close-modal-footer');
-  const btnCopyScript = document.getElementById('btn-copy-script');
+  // Instruction Modal Elements
+  const modalInstructions = document.getElementById('modal-instructions');
+  const btnCloseInstructions = document.getElementById('btn-close-instructions');
+  const btnCloseInstructionsFooter = document.getElementById('btn-close-instructions-footer');
 
   // Simulation Constants & Scaling
   const PX_PER_METER = 60; // 60 pixels represent 1 meter
@@ -759,40 +758,23 @@
     window.addEventListener('touchend', handleEnd);
 
     // ==========================================================================
-    // PRESENTATION MODAL LOGIC
+    // INSTRUCTIONS MODAL LOGIC
     // ==========================================================================
     
-    btnPresentation.addEventListener('click', () => {
-      modalPresentation.classList.add('open');
+    btnInstructions.addEventListener('click', () => {
+      modalInstructions.classList.add('open');
     });
 
-    const closeModalFunc = () => {
-      modalPresentation.classList.remove('open');
+    const closeInstructionsFunc = () => {
+      modalInstructions.classList.remove('open');
     };
 
-    btnCloseModal.addEventListener('click', closeModalFunc);
-    btnCloseModalFooter.addEventListener('click', closeModalFunc);
+    btnCloseInstructions.addEventListener('click', closeInstructionsFunc);
+    btnCloseInstructionsFooter.addEventListener('click', closeInstructionsFunc);
     
     // Close on clicking overlay background
-    modalPresentation.addEventListener('click', (e) => {
-      if (e.target === modalPresentation) closeModalFunc();
-    });
-
-    // Copy script to clipboard
-    btnCopyScript.addEventListener('click', () => {
-      const text = document.querySelector('.presentation-script').textContent.trim();
-      navigator.clipboard.writeText(text).then(() => {
-        const originalText = btnCopyScript.innerHTML;
-        btnCopyScript.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-        btnCopyScript.style.backgroundColor = 'var(--neon-green)';
-        btnCopyScript.style.color = '#000';
-        
-        setTimeout(() => {
-          btnCopyScript.innerHTML = originalText;
-          btnCopyScript.style.backgroundColor = '';
-          btnCopyScript.style.color = '';
-        }, 1500);
-      });
+    modalInstructions.addEventListener('click', (e) => {
+      if (e.target === modalInstructions) closeInstructionsFunc();
     });
 
     // ==========================================================================

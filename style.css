@@ -761,29 +761,67 @@ input[type="range"]::-webkit-slider-thumb:hover {
   gap: 16px;
 }
 
-.presentation-script {
-  font-family: var(--font-sans);
-  font-size: 1.1rem;
-  line-height: 1.6;
-  color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.25);
-  border-left: 3px solid var(--neon-cyan);
-  padding: 16px;
-  border-radius: 0 8px 8px 0;
-  font-style: italic;
+.instructions-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
-.modal-hint {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
+.instructions-body::-webkit-scrollbar {
+  width: 6px;
+}
+.instructions-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+.instructions-body::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+.instructions-body::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-cyan);
+}
+
+.instruction-step {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 14px 18px;
+  transition: var(--transition-smooth);
+}
+
+.instruction-step:hover {
+  background: rgba(0, 243, 255, 0.03);
+  border-color: rgba(0, 243, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.instruction-step h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  margin-bottom: 6px;
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.modal-hint i {
-  color: var(--neon-yellow);
-  margin-top: 2px;
+.instruction-step h3 i {
+  font-size: 0.9rem;
+}
+
+.instruction-step p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.instruction-step code {
+  font-family: var(--font-mono);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--neon-pink);
+  font-size: 0.8rem;
 }
 
 .modal-footer {

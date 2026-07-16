@@ -27,8 +27,8 @@
         <span>GRAVITY<span class="logo-accent">LAB</span></span>
       </div>
       <div class="header-actions">
-        <button id="btn-presentation" class="btn btn-secondary">
-          <i class="fa-solid fa-file-lines"></i> Script
+        <button id="btn-instructions" class="btn btn-secondary">
+          <i class="fa-solid fa-circle-question"></i> How to Use
         </button>
         <a href="https://github.com" target="_blank" class="github-link"><i class="fa-brands fa-github"></i></a>
       </div>
@@ -251,22 +251,33 @@
 
     </main>
 
-    <!-- Presentation Script Modal -->
-    <div id="modal-presentation" class="modal-overlay">
+    <!-- Instruction Modal -->
+    <div id="modal-instructions" class="modal-overlay">
       <div class="modal-content glass-card">
         <div class="modal-header">
-          <h2><i class="fa-solid fa-chalkboard-user"></i> Presentation Script (30 Seconds)</h2>
-          <button id="btn-close-modal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+          <h2><i class="fa-solid fa-circle-question"></i> How to Use Gravity Lab</h2>
+          <button id="btn-close-instructions" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="modal-body">
-          <blockquote class="presentation-script">
-            "Gravity Lab is an interactive physics simulator that allows users to explore how gravity affects moving objects. Users can switch between Earth, Moon, Mars, Zero Gravity, and Reverse Gravity modes, adjust gravity strength with a slider, and observe the object's motion in real time. This demonstrates basic physics concepts such as acceleration and velocity in a simple, visual way."
-          </blockquote>
-          <p class="modal-hint"><i class="fa-solid fa-lightbulb"></i> Use this script to present your interactive simulator. Try demonstrating "Reverse Gravity" or "Moon Mode" and shooting a few balls while talking!</p>
+        <div class="modal-body instructions-body">
+          <div class="instruction-step">
+            <h3><i class="fa-solid fa-mouse-pointer"></i> 1. Spawn & Launch Balls</h3>
+            <p><strong>Click</strong> inside the viewport to spawn a ball at that position. <strong>Click and drag</strong> to aim and launch a ball with a custom velocity vector (indicated by the blue arrow).</p>
+          </div>
+          <div class="instruction-step">
+            <h3><i class="fa-solid fa-sliders"></i> 2. Configure Settings</h3>
+            <p>Adjust the <strong>Gravity strength</strong> slider or select standard <strong>Planetary Presets</strong> (Earth, Moon, Mars, Zero-G, or Reverse). Modify <strong>Ball Spawner Properties</strong> like radius, color, and bounciness before spawning.</p>
+          </div>
+          <div class="instruction-step">
+            <h3><i class="fa-solid fa-eye"></i> 3. Customize Visuals</h3>
+            <p>Toggle the <strong>Background Grid</strong>, <strong>Motion Trails</strong>, <strong>Velocity Vectors</strong>, and <strong>Ball Collisions</strong> to observe trajectories, kinetic energy transfers, and velocity directions.</p>
+          </div>
+          <div class="instruction-step">
+            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> 4. Ask Gemini AI Copilot</h3>
+            <p>Click the <strong>Gemini AI</strong> bubble in the bottom right corner and try typing natural commands like <code>spawn 5 red balls</code> or <code>set gravity to moon</code> to control the simulator automatically!</p>
+          </div>
         </div>
         <div class="modal-footer">
-          <button id="btn-copy-script" class="btn btn-primary"><i class="fa-solid fa-copy"></i> Copy Script</button>
-          <button id="btn-close-modal-footer" class="btn btn-secondary">Close</button>
+          <button id="btn-close-instructions-footer" class="btn btn-primary">Got it!</button>
         </div>
       </div>
     </div>
