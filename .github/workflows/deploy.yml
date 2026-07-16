@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup GitHub Pages Configuration
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload Static Website Artifacts
         uses: actions/upload-pages-artifact@v3
