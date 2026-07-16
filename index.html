@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gravity Lab: Interactive Physics Simulator</title>
+  <!-- SEO & Meta -->
+  <meta name="description" content="An interactive gravity simulator featuring customizable physics parameters, multiple planetary gravity presets, vector visualizations, and smooth canvas mechanics.">
+  <meta name="keywords" content="gravity, physics, simulator, interactive, HTML5, canvas, space, science">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <i class="fa-solid fa-atom logo-icon"></i>
+        <span>GRAVITY<span class="logo-accent">LAB</span></span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-presentation" class="btn btn-secondary">
+          <i class="fa-solid fa-file-lines"></i> Script
+        </button>
+        <a href="https://github.com" target="_blank" class="github-link"><i class="fa-brands fa-github"></i></a>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      
+      <!-- Left Sidebar: Controls -->
+      <aside class="control-panel">
+        <!-- Simulation Control -->
+        <section class="control-group">
+          <h3><i class="fa-solid fa-gamepad"></i> Simulation</h3>
+          <div class="btn-grid">
+            <button id="btn-play-pause" class="btn btn-primary" title="Start/Pause Simulation">
+              <i class="fa-solid fa-pause"></i> <span id="txt-play-pause">Pause</span>
+            </button>
+            <button id="btn-reset" class="btn btn-secondary" title="Reset Simulation Properties">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button id="btn-clear" class="btn btn-danger" title="Remove all balls">
+              <i class="fa-solid fa-trash-can"></i> Clear
+            </button>
+          </div>
+        </section>
+
+        <!-- Gravity Settings -->
+        <section class="control-group">
+          <div class="group-header">
+            <h3><i class="fa-solid fa-circle-down"></i> Gravity strength</h3>
+            <span class="hud-value" id="val-gravity-readout">9.8<span class="unit"> m/s²</span></span>
+          </div>
+          
+          <div class="slider-container">
+            <input type="range" id="slider-gravity" min="-20" max="20" step="0.1" value="9.8">
+            <div class="slider-labels">
+              <span>-20</span>
+              <span>0 (Zero-G)</span>
+              <span>20</span>
+            </div>
+          </div>
+
+          <div class="preset-container">
+            <span class="preset-title">Planetary Presets</span>
+            <div class="preset-grid">
+              <button class="btn btn-preset" data-g="9.81" id="preset-earth">
+                <i class="fa-solid fa-earth-americas text-blue"></i> Earth (9.81)
+              </button>
+              <button class="btn btn-preset" data-g="1.62" id="preset-moon">
+                <i class="fa-solid fa-moon text-gray"></i> Moon (1.62)
+              </button>
+              <button class="btn btn-preset" data-g="3.71" id="preset-mars">
+                <i class="fa-solid fa-meteor text-red"></i> Mars (3.71)
+              </button>
+              <button class="btn btn-preset" data-g="0" id="preset-zero">
+                <i class="fa-solid fa-space-shuttle text-cyan"></i> Zero-G (0)
+              </button>
+              <button class="btn btn-preset" data-g="-9.81" id="preset-reverse">
+                <i class="fa-solid fa-circle-up text-pink"></i> Reverse (-9.81)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Ball Configuration -->
+        <section class="control-group">
+          <h3><i class="fa-solid fa-sliders"></i> Ball Spawner Properties</h3>
+          
+          <!-- Ball Color Swatches -->
+          <div class="config-item">
+            <label>Spawn Color</label>
+            <div class="color-picker-wrapper">
+              <div class="color-swatches" id="color-swatches">
+                <div class="swatch active" data-color="#00f3ff" style="background-color: #00f3ff;"></div>
+                <div class="swatch" data-color="#bd00ff" style="background-color: #bd00ff;"></div>
+                <div class="swatch" data-color="#ff007c" style="background-color: #ff007c;"></div>
+                <div class="swatch" data-color="#00ff66" style="background-color: #00ff66;"></div>
+                <div class="swatch" data-color="#ffaa00" style="background-color: #ffaa00;"></div>
+              </div>
+              <div class="custom-color-btn">
+                <input type="color" id="picker-color" value="#00f3ff">
+                <i class="fa-solid fa-palette"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ball Radius -->
+          <div class="config-item">
+            <div class="config-label-row">
+              <label for="slider-radius">Radius (Size)</label>
+              <span id="val-radius">20 px</span>
+            </div>
+            <input type="range" id="slider-radius" min="10" max="60" value="20">
+          </div>
+
+          <!-- Ball Restitution (Bounce) -->
+          <div class="config-item">
+            <div class="config-label-row">
+              <label for="slider-bounce">Bounciness (Elasticity)</label>
+              <span id="val-bounce">0.80</span>
+            </div>
+            <input type="range" id="slider-bounce" min="0.0" max="1.0" step="0.05" value="0.80">
+          </div>
+          
+          <div class="info-tip">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Click or click-and-drag inside the viewport to launch custom balls!</span>
+          </div>
+        </section>
+
+        <!-- Display Toggles -->
+        <section class="control-group">
+          <h3><i class="fa-solid fa-eye"></i> Visuals & Rules</h3>
+          <div class="toggle-list">
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-grid" checked>
+              <span class="slider"></span>
+              <span class="toggle-label"><i class="fa-solid fa-table-cells"></i> Background Grid</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-trails" checked>
+              <span class="slider"></span>
+              <span class="toggle-label"><i class="fa-solid fa-wave-square"></i> Motion Trails</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-vectors" checked>
+              <span class="slider"></span>
+              <span class="toggle-label"><i class="fa-solid fa-arrow-right-long"></i> Velocity Vectors</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-collisions" checked>
+              <span class="slider"></span>
+              <span class="toggle-label"><i class="fa-solid fa-explosion"></i> Ball Collisions</span>
+            </label>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Center Space: Physics Canvas & Live HUD Overlay -->
+      <section class="simulation-viewport">
+        <canvas id="physics-canvas"></canvas>
+        
+        <!-- Live HUD Overlay -->
+        <div class="viewport-hud">
+          <div class="hud-card" id="hud-gravity">
+            <span class="hud-card-label">GRAVITY</span>
+            <span class="hud-card-value font-mono" id="hud-gravity-val">9.8 m/s²</span>
+            <!-- Graphic mini meter -->
+            <div class="gravity-meter-visual">
+              <div class="gravity-meter-bar" id="gravity-meter-bar"></div>
+            </div>
+          </div>
+          <div class="hud-card">
+            <span class="hud-card-label">ACTIVE BALLS</span>
+            <span class="hud-card-value font-mono" id="hud-balls-val">0</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-card-label">PEAK SPEED</span>
+            <span class="hud-card-value font-mono text-pink" id="hud-speed-val">0.0<span class="hud-card-unit"> px/s</span></span>
+          </div>
+          <div class="hud-card" id="hud-fps-container">
+            <span class="hud-card-label">FPS</span>
+            <span class="hud-card-value font-mono text-green" id="hud-fps-val">60</span>
+          </div>
+        </div>
+
+        <!-- Launch Indicator/Hint for clicking and dragging -->
+        <div id="drag-helper" class="drag-helper">
+          <svg width="100%" height="100%" id="drag-helper-svg">
+            <line x1="0" y1="0" x2="0" y2="0" id="drag-line" class="drag-line"/>
+            <circle cx="0" cy="0" r="10" id="drag-circle" class="drag-circle"/>
+          </svg>
+        </div>
+
+        <!-- Gemini AI Physics Assistant Widget -->
+        <div class="gemini-chat-widget" id="gemini-widget">
+          <button class="gemini-toggle-btn" id="gemini-toggle" title="Open Gemini AI Assistant">
+            <i class="fa-solid fa-wand-magic-sparkles sparkle-icon"></i>
+            <span>Gemini AI</span>
+          </button>
+          
+          <div class="gemini-chat-window glass-card" id="gemini-chat-window">
+            <div class="gemini-chat-header">
+              <div class="gemini-title">
+                <i class="fa-solid fa-wand-magic-sparkles text-purple"></i>
+                <div>
+                  <h4>Gemini AI Copilot</h4>
+                  <span class="status-indicator">Ready to assist</span>
+                </div>
+              </div>
+              <button class="btn-close-chat" id="gemini-close"><i class="fa-solid fa-minus"></i></button>
+            </div>
+            
+            <div class="gemini-messages" id="gemini-messages">
+              <div class="message system">
+                <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                <div class="msg-text">
+                  Welcome to **Gravity Lab v1.0**! I am your AI Copilot. 
+                  <br><br>
+                  I can automatically execute physics settings or answer questions. Try typing:
+                  <ul>
+                    <li><code>set gravity to moon</code></li>
+                    <li><code>spawn 5 red balls</code></li>
+                    <li><code>explain gravity</code></li>
+                  </ul>
+                  <small class="msg-note">API connection ready. Setup API Key in cloud settings to unlock fully generative responses.</small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="gemini-chat-input-area">
+              <input type="text" id="gemini-input" placeholder="Ask Gemini..." autocomplete="off">
+              <button id="gemini-send-btn" class="btn btn-primary btn-icon" title="Send message">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Presentation Script Modal -->
+    <div id="modal-presentation" class="modal-overlay">
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h2><i class="fa-solid fa-chalkboard-user"></i> Presentation Script (30 Seconds)</h2>
+          <button id="btn-close-modal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+          <blockquote class="presentation-script">
+            "Gravity Lab is an interactive physics simulator that allows users to explore how gravity affects moving objects. Users can switch between Earth, Moon, Mars, Zero Gravity, and Reverse Gravity modes, adjust gravity strength with a slider, and observe the object's motion in real time. This demonstrates basic physics concepts such as acceleration and velocity in a simple, visual way."
+          </blockquote>
+          <p class="modal-hint"><i class="fa-solid fa-lightbulb"></i> Use this script to present your interactive simulator. Try demonstrating "Reverse Gravity" or "Moon Mode" and shooting a few balls while talking!</p>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-copy-script" class="btn btn-primary"><i class="fa-solid fa-copy"></i> Copy Script</button>
+          <button id="btn-close-modal-footer" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
