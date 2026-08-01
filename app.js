@@ -1,299 +1,42 @@
-/**
- * Gravity Lab - Interactive Physics Simulator
- * Core Engine & Interactive Code
- */
-
-(function () {
-  // Canvas & Context
-  const canvas = document.getElementById('physics-canvas');
-  const ctx = canvas.getContext('2d');
-  
-  // UI Elements
-  const btnPlayPause = document.getElementById('btn-play-pause');
-  const txtPlayPause = document.getElementById('txt-play-pause');
-  const btnReset = document.getElementById('btn-reset');
-  const btnClear = document.getElementById('btn-clear');
-  const btnInstructions = document.getElementById('btn-instructions');
-  
-  const sliderGravity = document.getElementById('slider-gravity');
-  const valGravityReadout = document.getElementById('val-gravity-readout');
-  
-  const presetEarth = document.getElementById('preset-earth');
-  const presetMoon = document.getElementById('preset-moon');
-  const presetMars = document.getElementById('preset-mars');
-  const presetZero = document.getElementById('preset-zero');
-  const presetReverse = document.getElementById('preset-reverse');
-  
-  const colorSwatches = document.getElementById('color-swatches');
-  const pickerColor = document.getElementById('picker-color');
-  const sliderRadius = document.getElementById('slider-radius');
-  const valRadius = document.getElementById('val-radius');
-  const sliderBounce = document.getElementById('slider-bounce');
-  const valBounce = document.getElementById('val-bounce');
-  
-  const toggleGrid = document.getElementById('toggle-grid');
-  const toggleTrails = document.getElementById('toggle-trails');
-  const toggleVectors = document.getElementById('toggle-vectors');
-  const toggleCollisions = document.getElementById('toggle-collisions');
-  
-  // HUD Elements
-  const hudGravityVal = document.getElementById('hud-gravity-val');
-  const gravityMeterBar = document.getElementById('gravity-meter-bar');
-  const hudBallsVal = document.getElementById('hud-balls-val');
-  const hudSpeedVal = document.getElementById('hud-speed-val');
-  const hudFpsVal = document.getElementById('hud-fps-val');
-  
-  // Drag Helper Elements
-  const dragHelper = document.getElementById('drag-helper');
-  const dragLine = document.getElementById('drag-line');
-  const dragCircle = document.getElementById('drag-circle');
-  
-  // Instruction Modal Elements
-  const modalInstructions = document.getElementById('modal-instructions');
-  const btnCloseInstructions = document.getElementById('btn-close-instructions');
-  const btnCloseInstructionsFooter = document.getElementById('btn-close-instructions-footer');
-
-  // Simulation Constants & Scaling
-  const PX_PER_METER = 60; // 60 pixels represent 1 meter
-  const DEFAULT_GRAVITY = 9.81; // Earth gravity (m/s^2)
-  const TIME_SPEED = 1.0; // Speed multiplier for time delta
-  
-  // Simulation State
-  let isRunning = true;
-  let gravity = DEFAULT_GRAVITY; // m/s^2
-  let balls = [];
-  let lastTime = 0;
-  let fps = 60;
-  let frameCount = 0;
-  let fpsLastTime = 0;
-  
-  // Drag-to-Launch State
-  let isDragging = false;
-  let dragStart = { x: 0, y: 0 };
-  let dragCurrent = { x: 0, y: 0 };
-  
-  // Ball custom properties (from sidebar)
-  let selectedColor = '#00f3ff';
-  let spawnRadius = 20;
-  let spawnRestitution = 0.8;
-
+(function() {
   // ==========================================================================
-  // INITIALIZATION & RESIZING
+  // 1. CONSTANTS & CONFIG
   // ==========================================================================
-  
-  function init() {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    setupEventListeners();
-    
-    // Set initial preset status
-    updateActivePresetClass(gravity);
-    updateGravityHUD();
-    
-    // Spawn a couple of default balls to start with
-    spawnInitialBalls();
-    
-    // Start physics loop
-    lastTime = performance.now();
-    fpsLastTime = lastTime;
-    requestAnimationFrame(loop);
-  }
+  const PX_PER_METER = 60;
+  const DEFAULT_GRAVITY = 9.81;
+  const PLAYER_RADIUS = 18;
+  const PLAYER_COLOR = '#00f3ff';
+  const PLAYER_RESTITUTION = 0.7;
+  const PLAYER_MOVE_SPEED = 350;
+  const PLAYER_JUMP_FORCE = -450;
+  const CRYSTAL_RADIUS = 12;
+  const CRYSTAL_SCORE = 10;
+  const OBSTACLE_BASE_SPEED = 200;
+  const BASE_SPAWN_INTERVAL = 2500;
+  const DIFFICULTY_INTERVAL = 20;
+  const MAX_PARTICLES = 60;
+  const TRAIL_MAX_LENGTH = 20;
+  const GRAVITY_FACTS = [
+    "The Moon's gravity is only about 1/6 of Earth's.",
+    "Jupiter has the strongest gravity of any planet in our solar system.",
+    "Black holes have gravity so strong that even light cannot escape.",
+    "Without gravity, the Earth would fly off into space.",
+    "Gravity is what keeps the Earth in orbit around the Sun.",
+    "The force of gravity gets weaker the farther apart two objects are.",
+    "Isaac Newton was the first to formulate a law of universal gravitation.",
+    "Albert Einstein's general theory of relativity describes gravity as a curve in spacetime.",
+    "You would weigh less on Mars because it has less mass than Earth.",
+    "Gravity is responsible for the ocean tides.",
+    "Gravity travels at the speed of light.",
+    "Microgravity in space makes astronauts float, but they are actually in continuous freefall."
+  ];
 
-  function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.parentElement.clientWidth;
-    const h = canvas.parentElement.clientHeight;
-    
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.scale(dpr, dpr);
-  }
+  // Mobile detection
+  const IS_TOUCH_DEVICE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const MOBILE_MAX_PARTICLES = 30;
+  const MOBILE_TRAIL_LENGTH = 10;
+  const MOBILE_STAR_COUNT = 50;
 
-  function spawnInitialBalls() {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    
-    // Spawn one bouncing ball in the center-top area
-    balls.push(new Ball(w * 0.5, h * 0.3, 22, '#00f3ff', 0.8, 150, -50));
-  }
-
-  // ==========================================================================
-  // BALL CLASS DEFINITION
-  // ==========================================================================
-  
-  class Ball {
-    constructor(x, y, radius, color, restitution, vx = 0, vy = 0) {
-      this.x = x;
-      this.y = y;
-      this.radius = radius;
-      this.color = color;
-      this.restitution = restitution; // Bounciness coefficient (0 - 1)
-      this.vx = vx; // Velocity X (px/s)
-      this.vy = vy; // Velocity Y (px/s)
-      this.mass = Math.PI * radius * radius; // Mass proportional to area
-      this.trail = [];
-      this.trailMaxLength = 24;
-      this.trailCounter = 0;
-    }
-
-    update(dt, width, height) {
-      // Apply gravity (acceleration Y = gravity in m/s^2 * PX_PER_METER)
-      const gravityAcc = gravity * PX_PER_METER;
-      this.vy += gravityAcc * dt;
-      
-      // Update position
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      
-      // Save trail history
-      this.trailCounter++;
-      if (this.trailCounter % 2 === 0) { // Throttle trail recording
-        this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > this.trailMaxLength) {
-          this.trail.shift();
-        }
-      }
-      
-      // Collision with environment boundaries
-      const bounceFriction = 0.995; // Minor horizontal air friction on wall impact
-      
-      // Floor collision
-      if (this.y + this.radius > height) {
-        this.y = height - this.radius;
-        this.vy = -this.vy * this.restitution;
-        this.vx *= bounceFriction;
-        
-        // Prevent sticking to floor due to float precision
-        if (Math.abs(this.vy) < 15 && gravity >= 0) {
-          this.vy = 0;
-        }
-      }
-      
-      // Ceiling collision
-      if (this.y - this.radius < 0) {
-        this.y = this.radius;
-        this.vy = -this.vy * this.restitution;
-        this.vx *= bounceFriction;
-        
-        if (Math.abs(this.vy) < 15 && gravity < 0) {
-          this.vy = 0;
-        }
-      }
-      
-      // Left Wall collision
-      if (this.x - this.radius < 0) {
-        this.x = this.radius;
-        this.vx = -this.vx * this.restitution;
-      }
-      
-      // Right Wall collision
-      if (this.x + this.radius > width) {
-        this.x = width - this.radius;
-        this.vx = -this.vx * this.restitution;
-      }
-    }
-
-    draw(ctx) {
-      const showTrails = toggleTrails.checked;
-      const showVectors = toggleVectors.checked;
-      
-      // 1. Draw trail
-      if (showTrails && this.trail.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(this.trail[0].x, this.trail[0].y);
-        for (let i = 1; i < this.trail.length; i++) {
-          ctx.lineTo(this.trail[i].x, this.trail[i].y);
-        }
-        
-        // Create dynamic gradient for fading tail
-        ctx.strokeStyle = this.color;
-        ctx.globalAlpha = 0.25;
-        ctx.lineWidth = this.radius * 0.3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-        
-        // Fading inner line
-        ctx.globalAlpha = 0.12;
-        ctx.lineWidth = this.radius * 0.8;
-        ctx.stroke();
-        
-        ctx.globalAlpha = 1.0; // Reset
-      }
-      
-      // 2. Draw Ball (Gradient Spherical rendering)
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      
-      // 3D Sphere gradient overlay
-      const grad = ctx.createRadialGradient(
-        this.x - this.radius * 0.3, 
-        this.y - this.radius * 0.3, 
-        this.radius * 0.05,
-        this.x, 
-        this.y, 
-        this.radius
-      );
-      
-      // Lighten the highlight center, darken outer edges
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.2, this.color);
-      grad.addColorStop(0.85, darkenColor(this.color, 40));
-      grad.addColorStop(1, darkenColor(this.color, 70));
-      
-      ctx.fillStyle = grad;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = this.color;
-      ctx.fill();
-      ctx.shadowBlur = 0; // Reset shadow
-      
-      // Outline/Border
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.stroke();
-      
-      // 3. Draw Velocity Vector Arrow
-      if (showVectors) {
-        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-        if (speed > 5) {
-          const arrowScale = 0.12; // Length multiplier
-          const maxArrowLength = 120;
-          let arrowLength = speed * arrowScale;
-          if (arrowLength > maxArrowLength) arrowLength = maxArrowLength;
-          
-          const angle = Math.atan2(this.vy, this.vx);
-          const endX = this.x + Math.cos(angle) * arrowLength;
-          const endY = this.y + Math.sin(angle) * arrowLength;
-          
-          // Draw line
-          ctx.beginPath();
-          ctx.moveTo(this.x, this.y);
-          ctx.lineTo(endX, endY);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-          
-          // Draw arrow head
-          const headLength = 8;
-          ctx.beginPath();
-          ctx.moveTo(endX, endY);
-          ctx.lineTo(
-            endX - headLength * Math.cos(angle - Math.PI / 6),
-            endY - headLength * Math.sin(angle - Math.PI / 6)
-          );
-          ctx.lineTo(
-            endX - headLength * Math.cos(angle + Math.PI / 6),
-            endY - headLength * Math.sin(angle + Math.PI / 6)
-          );
-          ctx.closePath();
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-        }
-      }
-    }
-  }
-
-  // Helper utility to darken hex colors
   function darkenColor(hex, percent) {
     let num = parseInt(hex.replace('#',''), 16),
         amt = Math.round(2.55 * percent),
@@ -309,104 +52,546 @@
   }
 
   // ==========================================================================
-  // PHYSICS ENGINE & COLLISION RESOLUTION
+  // 2. AUDIO MANAGER
   // ==========================================================================
-  
-  function resolveCollisions() {
-    if (!toggleCollisions.checked || balls.length < 2) return;
-    
-    // Double loop to check collisions between every ball pair
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        const b1 = balls[i];
-        const b2 = balls[j];
-        
-        const dx = b2.x - b1.x;
-        const dy = b2.y - b1.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = b1.radius + b2.radius;
-        
-        if (dist < minDist) {
-          // Prevent overlapping objects (positional correction)
-          const overlap = minDist - dist;
-          
-          // Collision normal vector
-          // If balls overlap exactly, handle division by zero
-          const nx = dist === 0 ? 1 : dx / dist;
-          const ny = dist === 0 ? 0 : dy / dist;
-          
-          // Distribute positional correction based on mass proportions
-          const totalMass = b1.mass + b2.mass;
-          const correctionScalar = overlap / totalMass;
-          
-          b1.x -= nx * (correctionScalar * b2.mass);
-          b1.y -= ny * (correctionScalar * b2.mass);
-          b2.x += nx * (correctionScalar * b1.mass);
-          b2.y += ny * (correctionScalar * b1.mass);
-          
-          // Elastic Collision Physics (Impulse Resolution)
-          // Relative velocity vector
-          const rvx = b2.vx - b1.vx;
-          const rvy = b2.vy - b1.vy;
-          
-          // Relative velocity along normal direction
-          const velAlongNormal = rvx * nx + rvy * ny;
-          
-          // Do not resolve if velocities are already moving apart
-          if (velAlongNormal < 0) {
-            // Restitution factor (average bounciness)
-            const restitution = (b1.restitution + b2.restitution) / 2;
-            
-            // Calculate impulse scalar
-            let impulseScalar = -(1 + restitution) * velAlongNormal;
-            impulseScalar /= (1 / b1.mass + 1 / b2.mass);
-            
-            // Apply impulse to each ball
-            b1.vx -= (impulseScalar / b1.mass) * nx;
-            b1.vy -= (impulseScalar / b1.mass) * ny;
-            b2.vx += (impulseScalar / b2.mass) * nx;
-            b2.vy += (impulseScalar / b2.mass) * ny;
-          }
+  const AudioManager = {
+    ctx: null,
+    init() {
+      if (!this.ctx) {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    },
+    playOscillator(type, freqStart, freqEnd, duration, volume = 0.1) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freqStart, this.ctx.currentTime);
+      if (freqEnd) {
+        osc.frequency.exponentialRampToValueAtTime(freqEnd, this.ctx.currentTime + duration);
+      }
+      gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    },
+    playClick() { this.playOscillator('square', 800, null, 0.08, 0.05); },
+    playCrystal() { this.playOscillator('sine', 400, 800, 0.15, 0.1); },
+    playCollision() { this.playOscillator('sawtooth', 100, 50, 0.3, 0.2); },
+    playReverse() { this.playOscillator('sine', 200, 600, 0.2, 0.1); },
+    playCountdown() { this.playOscillator('square', 600, null, 0.1, 0.1); },
+    playGameStart() {
+      if (!this.ctx) return;
+      const playFreq = (f, t) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = f;
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + t + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(this.ctx.currentTime + t);
+        osc.stop(this.ctx.currentTime + t + 0.3);
+      };
+      playFreq(400, 0);
+      playFreq(500, 0.1);
+      playFreq(600, 0.2);
+    }
+  };
+
+  // ==========================================================================
+  // 3. PARTICLE SYSTEM
+  // ==========================================================================
+  let particles = [];
+  class Particle {
+    constructor(x, y, vx, vy, life, color, size) {
+      this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+      this.life = life; this.maxLife = life; this.color = color; this.size = size;
+    }
+  }
+  function spawnParticles(x, y, count, color, spread = 100) {
+    for (let i = 0; i < count; i++) {
+      if (particles.length >= (IS_TOUCH_DEVICE ? MOBILE_MAX_PARTICLES : MAX_PARTICLES)) particles.shift();
+      const vx = (Math.random() - 0.5) * spread;
+      const vy = (Math.random() - 0.5) * spread;
+      const life = 0.5 + Math.random() * 0.5;
+      const size = 2 + Math.random() * 3;
+      particles.push(new Particle(x, y, vx, vy, life, color, size));
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+  function renderParticles(ctx) {
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+  }
+
+  // ==========================================================================
+  // 4. PLAYER CLASS
+  // ==========================================================================
+  class Player {
+    constructor(x, y, radius, color, restitution) {
+      this.x = x;
+      this.y = y;
+      this.radius = radius;
+      this.color = color;
+      this.restitution = restitution;
+      this.vx = 0;
+      this.vy = 0;
+      this.trail = [];
+      this.trailCounter = 0;
+      this.isAlive = true;
+      this.invincibleTimer = 0;
+      this.isGrounded = false;
+    }
+
+    update(dt, width, height, gravity, inputDirection) {
+      if (!this.isAlive) return;
+      
+      const gravityAcc = gravity * PX_PER_METER;
+      this.vy += gravityAcc * dt;
+      
+      this.vx += inputDirection * PLAYER_MOVE_SPEED * dt;
+      this.vx *= 0.92;
+      
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      
+      this.trailCounter++;
+      if (this.trailCounter % 2 === 0) {
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > (IS_TOUCH_DEVICE ? MOBILE_TRAIL_LENGTH : TRAIL_MAX_LENGTH)) {
+          this.trail.shift();
         }
       }
+      
+      const bounceFriction = 0.995;
+      this.isGrounded = false;
+      
+      if (this.y + this.radius > height) {
+        this.y = height - this.radius;
+        this.vy = -this.vy * this.restitution;
+        this.vx *= bounceFriction;
+        if (Math.abs(this.vy) < 15 && gravity >= 0) {
+          this.vy = 0;
+          this.isGrounded = true;
+        }
+      }
+      
+      if (this.y - this.radius < 0) {
+        this.y = this.radius;
+        this.vy = -this.vy * this.restitution;
+        this.vx *= bounceFriction;
+        if (Math.abs(this.vy) < 15 && gravity < 0) {
+          this.vy = 0;
+          this.isGrounded = true;
+        }
+      }
+      
+      if (this.x - this.radius < 0) {
+        this.x = this.radius;
+        this.vx = -this.vx * this.restitution;
+      }
+      
+      if (this.x + this.radius > width) {
+        this.x = width - this.radius;
+        this.vx = -this.vx * this.restitution;
+      }
+      
+      if (this.invincibleTimer > 0) {
+        this.invincibleTimer -= dt;
+      }
+      
+      if (this.y < -this.radius * 2 || this.y > height + this.radius * 2) {
+        GameManager.gameOver();
+      }
+    }
+
+    draw(ctx) {
+      if (!this.isAlive) return;
+      
+      if (this.invincibleTimer > 0) {
+        if (Math.floor(this.invincibleTimer * 10) % 2 === 0) return;
+      }
+      
+      if (this.trail.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(this.trail[0].x, this.trail[0].y);
+        for (let i = 1; i < this.trail.length; i++) {
+          ctx.lineTo(this.trail[i].x, this.trail[i].y);
+        }
+        ctx.strokeStyle = this.color;
+        ctx.globalAlpha = 0.25;
+        ctx.lineWidth = this.radius * 0.3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        
+        ctx.globalAlpha = 0.12;
+        ctx.lineWidth = this.radius * 0.8;
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+      
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      
+      const grad = ctx.createRadialGradient(
+        this.x - this.radius * 0.3, 
+        this.y - this.radius * 0.3, 
+        this.radius * 0.05,
+        this.x, 
+        this.y, 
+        this.radius
+      );
+      
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.2, this.color);
+      grad.addColorStop(0.85, darkenColor(this.color, 40));
+      grad.addColorStop(1, darkenColor(this.color, 70));
+      
+      ctx.fillStyle = grad;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = this.color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.stroke();
     }
   }
 
   // ==========================================================================
-  // BACKGROUND GRID RENDERING (WITH WARPING GRAVITY WELLS)
+  // 5. OBSTACLE SYSTEM
   // ==========================================================================
-  
-  function drawBackgroundGrid(width, height) {
-    if (!toggleGrid.checked) return;
+  let obstacles = [];
+  class Obstacle {
+    constructor(x, y, width, height, speed, type) {
+      this.x = x; this.y = y; this.width = width; this.height = height;
+      this.speed = speed; this.type = type;
+      this.warningTimer = type === 'laser' ? 1.0 : 0;
+      this.active = type !== 'laser';
+    }
+  }
+  function spawnObstacle(canvasWidth, canvasHeight, multiplier) {
+    const types = ['spike', 'block', 'laser'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const speed = OBSTACLE_BASE_SPEED * multiplier;
+    let y = Math.random() * (canvasHeight - 100) + 50;
     
+    if (type === 'laser') {
+      obstacles.push(new Obstacle(0, y, canvasWidth, 10, 0, 'laser'));
+    } else {
+      let width = type === 'spike' ? 30 : 40 + Math.random() * 40;
+      let height = type === 'spike' ? 40 : 40 + Math.random() * 40;
+      obstacles.push(new Obstacle(canvasWidth + 50, y, width, height, speed, type));
+    }
+  }
+  function updateObstacles(dt) {
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      let obs = obstacles[i];
+      if (obs.type === 'laser') {
+        if (obs.warningTimer > 0) {
+          obs.warningTimer -= dt;
+          if (obs.warningTimer <= 0) obs.active = true;
+        } else {
+          obs.warningTimer -= dt;
+          if (obs.warningTimer < -1.5) obstacles.splice(i, 1);
+        }
+      } else {
+        obs.x -= obs.speed * dt;
+        if (obs.x + obs.width < -50) obstacles.splice(i, 1);
+      }
+    }
+  }
+  function renderObstacles(ctx) {
+    obstacles.forEach(obs => {
+      if (obs.type === 'laser') {
+        if (obs.warningTimer > 0) {
+          ctx.fillStyle = (Math.floor(obs.warningTimer * 10) % 2 === 0) ? 'rgba(255, 0, 124, 0.5)' : 'transparent';
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        } else if (obs.active) {
+          ctx.fillStyle = '#ff007c';
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ff007c';
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(obs.x, obs.y + 3, obs.width, 4);
+        }
+      } else if (obs.type === 'spike') {
+        ctx.fillStyle = '#ff007c';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff007c';
+        ctx.beginPath();
+        ctx.moveTo(obs.x, obs.y + obs.height/2);
+        ctx.lineTo(obs.x + obs.width, obs.y);
+        ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (obs.type === 'block') {
+        const grad = ctx.createLinearGradient(obs.x, obs.y, obs.x, obs.y + obs.height);
+        grad.addColorStop(0, '#ff007c');
+        grad.addColorStop(1, '#aa0055');
+        ctx.fillStyle = grad;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff007c';
+        ctx.beginPath();
+        ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 8);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    });
+  }
+
+  // ==========================================================================
+  // 6. CRYSTAL SYSTEM
+  // ==========================================================================
+  let crystals = [];
+  class Crystal {
+    constructor(x, y) {
+      this.x = x; this.y = y; this.radius = CRYSTAL_RADIUS;
+      this.glowPhase = Math.random() * Math.PI * 2;
+      this.collected = false;
+    }
+  }
+  function spawnCrystal(width, height) {
+    if (crystals.length >= 3) return;
+    const x = 50 + Math.random() * (width - 100);
+    const y = 50 + Math.random() * (height - 100);
+    crystals.push(new Crystal(x, y));
+  }
+  function updateCrystals(dt) {
+    for (let i = crystals.length - 1; i >= 0; i--) {
+      let c = crystals[i];
+      c.glowPhase += dt * 3;
+      if (c.collected) crystals.splice(i, 1);
+    }
+  }
+  function renderCrystals(ctx) {
+    crystals.forEach(c => {
+      const glow = Math.abs(Math.sin(c.glowPhase));
+      const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.radius + 5 + glow * 5);
+      grad.addColorStop(0, 'rgba(0, 243, 255, 1)');
+      grad.addColorStop(0.5, 'rgba(0, 243, 255, 0.5)');
+      grad.addColorStop(1, 'rgba(0, 243, 255, 0)');
+      
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.radius + 5 + glow * 5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y - c.radius);
+      ctx.lineTo(c.x + c.radius, c.y);
+      ctx.lineTo(c.x, c.y + c.radius);
+      ctx.lineTo(c.x - c.radius, c.y);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  // ==========================================================================
+  // 7. SCORE MANAGER
+  // ==========================================================================
+  const ScoreManager = {
+    score: 0,
+    highScore: parseInt(localStorage.getItem('gravitylab-highscore')) || 0,
+    timeSurvived: 0,
+    scoreTimer: 0,
+    isNewHighScore: false,
+    
+    update(dt) {
+      this.scoreTimer += dt;
+      this.timeSurvived += dt;
+      if (this.scoreTimer >= 1.0) {
+        this.score += 1;
+        this.scoreTimer -= 1.0;
+        this.checkHighScore();
+      }
+    },
+    addPoints(amount, x, y) {
+      this.score += amount;
+      this.checkHighScore();
+      UIManager.spawnScorePopup(x, y, `+${amount}`);
+    },
+    checkHighScore() {
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        this.isNewHighScore = true;
+      }
+    },
+    saveHighScore() {
+      if (this.isNewHighScore) {
+        localStorage.setItem('gravitylab-highscore', this.highScore);
+      }
+    },
+    reset() {
+      this.score = 0;
+      this.timeSurvived = 0;
+      this.scoreTimer = 0;
+      this.isNewHighScore = false;
+    },
+    getRandomFact() {
+      return GRAVITY_FACTS[Math.floor(Math.random() * GRAVITY_FACTS.length)];
+    }
+  };
+
+  // ==========================================================================
+  // 8. UI MANAGER
+  // ==========================================================================
+  const UIManager = {
+    screens: {
+      menu: document.getElementById('screen-menu'),
+      instructions: document.getElementById('screen-instructions'),
+      countdown: document.getElementById('screen-countdown'),
+      pause: document.getElementById('screen-pause'),
+      gameover: document.getElementById('screen-gameover')
+    },
+    els: {
+      headerScore: document.getElementById('header-score'),
+      headerHighScore: document.getElementById('header-highscore'),
+      hudScore: document.getElementById('hud-score'),
+      hudHighScore: document.getElementById('hud-highscore'),
+      gravityLabel: document.getElementById('gravity-label'),
+      gravityArrow: document.getElementById('gravity-arrow'),
+      hudFps: document.getElementById('hud-fps'),
+      countdownNum: document.getElementById('countdown-number'),
+      goScore: document.getElementById('gameover-score'),
+      goHighScore: document.getElementById('gameover-highscore'),
+      goTime: document.getElementById('gameover-time'),
+      goFact: document.getElementById('gameover-fact-text'),
+      goNewHs: document.getElementById('gameover-new-hs'),
+      scorePopups: document.getElementById('score-popups')
+    },
+    hideAllScreens() {
+      Object.values(this.screens).forEach(el => el.classList.add('hidden'));
+    },
+    showScreen(id) {
+      this.hideAllScreens();
+      if (this.screens[id]) this.screens[id].classList.remove('hidden');
+    },
+    updateScore(score) {
+      this.els.headerScore.textContent = score;
+      this.els.hudScore.textContent = score;
+    },
+    updateHighScore(hs) {
+      this.els.headerHighScore.textContent = hs;
+      this.els.hudHighScore.textContent = hs;
+    },
+    updateGravityIndicator(g) {
+      this.els.gravityLabel.textContent = `${Math.abs(g).toFixed(1)} m/s²`;
+      this.els.gravityArrow.style.transform = g > 0 ? 'rotate(0deg)' : 'rotate(180deg)';
+      this.els.gravityArrow.style.color = g > 0 ? 'var(--neon-cyan)' : 'var(--neon-pink)';
+    },
+    updateFPS(fps) {
+      this.els.hudFps.textContent = fps;
+    },
+    showGameOver(score, hs, time, isNew) {
+      this.els.goScore.textContent = score;
+      this.els.goHighScore.textContent = hs;
+      this.els.goTime.textContent = `${Math.floor(time)}s`;
+      this.els.goFact.textContent = ScoreManager.getRandomFact();
+      if (isNew) this.els.goNewHs.classList.remove('hidden');
+      else this.els.goNewHs.classList.add('hidden');
+      this.showScreen('gameover');
+    },
+    showCountdown(num) {
+      this.els.countdownNum.textContent = num;
+      this.els.countdownNum.style.animation = 'none';
+      void this.els.countdownNum.offsetWidth;
+      this.els.countdownNum.style.animation = 'pulse 1s infinite';
+    },
+    spawnScorePopup(x, y, text) {
+      const el = document.createElement('div');
+      el.className = 'score-popup font-mono text-cyan';
+      el.textContent = text;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      this.els.scorePopups.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+    },
+    triggerScreenShake() {
+      document.body.classList.add('shake');
+      setTimeout(() => document.body.classList.remove('shake'), 300);
+    }
+  };
+
+  // ==========================================================================
+  // 9. BACKGROUND RENDERER
+  // ==========================================================================
+  let stars = [];
+  const STAR_COUNT = IS_TOUCH_DEVICE ? MOBILE_STAR_COUNT : 100;
+  for(let i=0; i<STAR_COUNT; i++) {
+    stars.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      size: Math.random() * 2,
+      speed: 10 + Math.random() * 30
+    });
+  }
+  function drawBackground(ctx, width, height, player, dt) {
+    stars.forEach(star => {
+      star.x -= star.speed * dt;
+      if (star.x < 0) {
+        star.x = width;
+        star.y = Math.random() * height;
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(star.x, star.y, star.size, star.size);
+    });
+
     const gridSpacing = 40;
     ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
     ctx.lineWidth = 1;
     
-    // Grid horizontal lines
     for (let y = 0; y < height; y += gridSpacing) {
       ctx.beginPath();
       for (let x = 0; x < width; x += 10) {
         let displayX = x;
         let displayY = y;
         
-        // Gravity warping physics effect: Pull grid intersection lines towards massive bodies!
-        balls.forEach(ball => {
-          const dx = ball.x - x;
-          const dy = ball.y - y;
+        if (player) {
+          const dx = player.x - x;
+          const dy = player.y - y;
           const dist2 = dx * dx + dy * dy;
-          const warpRadius = ball.radius * 3.5;
-          
+          const warpRadius = player.radius * 3.5;
           if (dist2 < warpRadius * warpRadius) {
             const dist = Math.sqrt(dist2);
-            // Stronger pull when closer, fading at edge
             const force = (warpRadius - dist) / warpRadius;
-            const displacement = force * (ball.radius * 0.28);
-            
+            const displacement = force * (player.radius * 0.28);
             displayX += (dx / (dist || 1)) * displacement;
             displayY += (dy / (dist || 1)) * displacement;
           }
-        });
+        }
         
         if (x === 0) ctx.moveTo(displayX, displayY);
         else ctx.lineTo(displayX, displayY);
@@ -414,28 +599,25 @@
       ctx.stroke();
     }
     
-    // Grid vertical lines
     for (let x = 0; x < width; x += gridSpacing) {
       ctx.beginPath();
       for (let y = 0; y < height; y += 10) {
         let displayX = x;
         let displayY = y;
         
-        balls.forEach(ball => {
-          const dx = ball.x - x;
-          const dy = ball.y - y;
+        if (player) {
+          const dx = player.x - x;
+          const dy = player.y - y;
           const dist2 = dx * dx + dy * dy;
-          const warpRadius = ball.radius * 3.5;
-          
+          const warpRadius = player.radius * 3.5;
           if (dist2 < warpRadius * warpRadius) {
             const dist = Math.sqrt(dist2);
             const force = (warpRadius - dist) / warpRadius;
-            const displacement = force * (ball.radius * 0.28);
-            
+            const displacement = force * (player.radius * 0.28);
             displayX += (dx / (dist || 1)) * displacement;
             displayY += (dy / (dist || 1)) * displacement;
           }
-        });
+        }
         
         if (y === 0) ctx.moveTo(displayX, displayY);
         else ctx.lineTo(displayX, displayY);
@@ -445,492 +627,499 @@
   }
 
   // ==========================================================================
-  // PHYSICS LOOP
+  // 10. GAME MANAGER (State Machine)
   // ==========================================================================
+  const GameManager = {
+    state: 'MENU',
+    player: null,
+    difficultyTimer: 0,
+    obstacleSpawnTimer: 0,
+    crystalSpawnTimer: 0,
+    gravity: DEFAULT_GRAVITY,
+    canvas: document.getElementById('game-canvas'),
+    ctx: null,
+    
+    init() {
+      this.ctx = this.canvas.getContext('2d');
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      UIManager.updateHighScore(ScoreManager.highScore);
+      this.returnToMenu();
+    },
+    startGame() {
+      this.state = 'COUNTDOWN';
+      UIManager.showScreen('countdown');
+      ScoreManager.reset();
+      this.player = new Player(this.canvas.width/4, this.canvas.height/2, PLAYER_RADIUS, PLAYER_COLOR, PLAYER_RESTITUTION);
+      this.gravity = DEFAULT_GRAVITY;
+      UIManager.updateGravityIndicator(this.gravity);
+      obstacles = [];
+      crystals = [];
+      particles = [];
+      this.difficultyTimer = 0;
+      this.obstacleSpawnTimer = 0;
+      this.crystalSpawnTimer = 0;
+      
+      let count = 3;
+      UIManager.showCountdown(count);
+      AudioManager.playCountdown();
+      
+      const countInt = setInterval(() => {
+        count--;
+        if (count > 0) {
+          UIManager.showCountdown(count);
+          AudioManager.playCountdown();
+        } else {
+          clearInterval(countInt);
+          this.state = 'PLAYING';
+          UIManager.hideAllScreens();
+          if (IS_TOUCH_DEVICE) {
+            mobileReverseBtn.style.display = 'flex';
+            mobilePauseBtn.style.display = 'flex';
+          }
+          AudioManager.playGameStart();
+        }
+      }, 1000);
+    },
+    pauseGame() {
+      if (this.state === 'PLAYING') {
+        this.state = 'PAUSED';
+        UIManager.showScreen('pause');
+      }
+    },
+    resumeGame() {
+      if (this.state === 'PAUSED') {
+        this.state = 'PLAYING';
+        UIManager.hideAllScreens();
+      }
+    },
+    gameOver() {
+      this.state = 'GAME_OVER';
+      this.player.isAlive = false;
+      spawnParticles(this.player.x, this.player.y, 40, '#ff007c', 200);
+      AudioManager.playCollision();
+      if (IS_TOUCH_DEVICE) {
+        mobileReverseBtn.style.display = 'none';
+        mobilePauseBtn.style.display = 'none';
+      }
+      UIManager.triggerScreenShake();
+      ScoreManager.saveHighScore();
+      setTimeout(() => {
+        UIManager.showGameOver(ScoreManager.score, ScoreManager.highScore, ScoreManager.timeSurvived, ScoreManager.isNewHighScore);
+      }, 1000);
+    },
+    returnToMenu() {
+      this.state = 'MENU';
+      UIManager.showScreen('menu');
+      if (IS_TOUCH_DEVICE) {
+        mobileReverseBtn.style.display = 'none';
+        mobilePauseBtn.style.display = 'none';
+      }
+      UIManager.updateScore(0);
+      UIManager.updateHighScore(ScoreManager.highScore);
+    },
+    getDifficultyMultiplier() {
+      return 1 + (this.difficultyTimer / DIFFICULTY_INTERVAL) * 0.5;
+    },
+    getSpawnInterval() {
+      return BASE_SPAWN_INTERVAL / this.getDifficultyMultiplier();
+    },
+    reverseGravity() {
+      this.gravity = -this.gravity;
+      UIManager.updateGravityIndicator(this.gravity);
+      AudioManager.playReverse();
+      if (this.player) {
+        spawnParticles(this.player.x, this.player.y, 20, '#00f3ff', 50);
+      }
+    },
+    update(dt) {
+      this.difficultyTimer += dt;
+      this.obstacleSpawnTimer += dt * 1000;
+      this.crystalSpawnTimer += dt * 1000;
+      
+      let inputDir = 0;
+      if (keys['ArrowLeft'] || keys['KeyA'] || keys['TouchLeft']) inputDir -= 1;
+      if (keys['ArrowRight'] || keys['KeyD'] || keys['TouchRight']) inputDir += 1;
+      
+      if ((keys['ArrowUp'] || keys['KeyW'] || keys['TouchJump']) && this.player.isGrounded) {
+        this.player.vy = (this.gravity > 0) ? PLAYER_JUMP_FORCE : -PLAYER_JUMP_FORCE;
+        this.player.isGrounded = false;
+      }
+      
+      this.player.update(dt, this.canvas.clientWidth, this.canvas.clientHeight, this.gravity, inputDir);
+      
+      if (this.obstacleSpawnTimer >= this.getSpawnInterval()) {
+        this.obstacleSpawnTimer = 0;
+        spawnObstacle(this.canvas.clientWidth, this.canvas.clientHeight, this.getDifficultyMultiplier());
+      }
+      if (this.crystalSpawnTimer >= 3000) {
+        this.crystalSpawnTimer = 0;
+        spawnCrystal(this.canvas.clientWidth, this.canvas.clientHeight);
+      }
+      
+      updateObstacles(dt);
+      updateCrystals(dt);
+      updateParticles(dt);
+      ScoreManager.update(dt);
+      UIManager.updateScore(ScoreManager.score);
+      
+      // Collisions
+      obstacles.forEach(obs => {
+        if (!obs.active) return;
+        if (obs.type === 'laser') {
+          if (this.player.y + this.player.radius > obs.y && this.player.y - this.player.radius < obs.y + obs.height) {
+            this.gameOver();
+          }
+        } else {
+          let px = Math.max(obs.x, Math.min(this.player.x, obs.x + obs.width));
+          let py = Math.max(obs.y, Math.min(this.player.y, obs.y + obs.height));
+          let dist = Math.sqrt((this.player.x - px)**2 + (this.player.y - py)**2);
+          if (dist < this.player.radius) {
+            if (obs.type === 'spike') {
+              // crude triangle check, treat as rect for simplicity for now
+              this.gameOver();
+            } else {
+              this.gameOver();
+            }
+          }
+        }
+      });
+      
+      crystals.forEach(c => {
+        if (!c.collected) {
+          let dist = Math.sqrt((this.player.x - c.x)**2 + (this.player.y - c.y)**2);
+          if (dist < this.player.radius + c.radius) {
+            c.collected = true;
+            ScoreManager.addPoints(CRYSTAL_SCORE, c.x, c.y);
+            AudioManager.playCrystal();
+            spawnParticles(c.x, c.y, 15, '#00f3ff', 80);
+          }
+        }
+      });
+    },
+    render(ctx, w, h, dt) {
+      drawBackground(ctx, w, h, this.player, dt);
+      if (this.state === 'PLAYING' || this.state === 'PAUSED' || this.state === 'GAME_OVER') {
+        renderCrystals(ctx);
+        renderObstacles(ctx);
+        if (this.player) this.player.draw(ctx);
+        renderParticles(ctx);
+      }
+    }
+  };
+
+  // ==========================================================================
+  // 11. INPUT HANDLER
+  // ==========================================================================
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space' && GameManager.state === 'PLAYING') {
+      GameManager.reverseGravity();
+      e.preventDefault();
+    }
+    if (e.code === 'Escape') {
+      if (GameManager.state === 'PLAYING') GameManager.pauseGame();
+      else if (GameManager.state === 'PAUSED') GameManager.resumeGame();
+    }
+    if (e.code === 'Enter' && GameManager.state === 'MENU') {
+      AudioManager.init();
+      GameManager.startGame();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    keys[e.code] = false;
+  });
+
+  // ==========================================================================
+  // 12. MAIN LOOP
+  // ==========================================================================
+  let lastTime = 0;
+  let fps = 60;
+  let frameCount = 0;
+  let fpsLastTime = 0;
   
   function loop(currentTime) {
-    // 1. Manage Delta Time (Cap delta to prevent tunneling during lag spikes)
     let dt = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
+    if (dt > 0.1) dt = 0.1;
     
-    if (dt > 0.1) dt = 0.1; // Maximum dt threshold (10fps min)
-    dt *= TIME_SPEED;
-    
-    // 2. Manage FPS Statistics
     frameCount++;
     if (currentTime - fpsLastTime >= 1000) {
       fps = Math.round((frameCount * 1000) / (currentTime - fpsLastTime));
-      hudFpsVal.textContent = fps;
-      
-      // Color code FPS to indicate performance
-      if (fps >= 55) {
-        hudFpsVal.className = 'hud-card-value font-mono text-green';
-      } else if (fps >= 30) {
-        hudFpsVal.className = 'hud-card-value font-mono text-cyan';
-      } else {
-        hudFpsVal.className = 'hud-card-value font-mono text-red';
-      }
-      
+      UIManager.updateFPS(fps);
       frameCount = 0;
       fpsLastTime = currentTime;
     }
     
-    // Get Dimensions
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    GameManager.ctx.clearRect(0, 0, GameManager.canvas.width, GameManager.canvas.height);
+    GameManager.render(GameManager.ctx, GameManager.canvas.width, GameManager.canvas.height, dt);
     
-    // Clear viewport canvas
-    ctx.clearRect(0, 0, w, h);
-    
-    // Draw background elements
-    drawBackgroundGrid(w, h);
-    
-    // 3. Update & Draw Balls
-    let maxSpeed = 0;
-    
-    if (isRunning) {
-      // Update state
-      balls.forEach(ball => ball.update(dt, w, h));
-      resolveCollisions();
+    if (GameManager.state === 'PLAYING') {
+      GameManager.update(dt);
     }
-    
-    // Render state
-    balls.forEach(ball => {
-      ball.draw(ctx);
-      
-      // Track peak speed
-      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-      if (speed > maxSpeed) maxSpeed = speed;
-    });
-    
-    // 4. Update HUD Statistics
-    hudBallsVal.textContent = balls.length;
-    hudSpeedVal.innerHTML = `${(maxSpeed / PX_PER_METER).toFixed(1)}<span class="hud-card-unit"> m/s</span>`;
     
     requestAnimationFrame(loop);
   }
 
   // ==========================================================================
-  // HUD GAUGE & UI UPDATERS
+  // 13. BUTTON EVENT LISTENERS
   // ==========================================================================
-  
-  function updateGravityHUD() {
-    // Update labels and values
-    valGravityReadout.innerHTML = `${gravity.toFixed(2)}<span class="unit"> m/s²</span>`;
-    hudGravityVal.textContent = `${gravity.toFixed(2)} m/s²`;
-    
-    // Update graphic bar. Gravity slider is -20 to 20.
-    // Map -20..20 to -50%..50% of meter bar width
-    const percentage = (gravity / 20) * 50; // Ranges from -50% to 50%
-    
-    if (percentage >= 0) {
-      gravityMeterBar.style.left = '50%';
-      gravityMeterBar.style.width = percentage + '%';
-      gravityMeterBar.style.backgroundColor = 'var(--neon-cyan)';
+  document.getElementById('btn-play').addEventListener('click', () => {
+    AudioManager.init();
+    AudioManager.playClick();
+    GameManager.startGame();
+  });
+  document.getElementById('btn-menu-instructions').addEventListener('click', () => {
+    AudioManager.init();
+    AudioManager.playClick();
+    UIManager.showScreen('instructions');
+  });
+  document.getElementById('btn-close-instructions').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.returnToMenu();
+  });
+  document.getElementById('btn-instructions-back').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.returnToMenu();
+  });
+  document.getElementById('btn-resume').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.resumeGame();
+  });
+  document.getElementById('btn-pause-menu').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.returnToMenu();
+  });
+  document.getElementById('btn-play-again').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.startGame();
+  });
+  document.getElementById('btn-gameover-menu').addEventListener('click', () => {
+    AudioManager.playClick();
+    GameManager.returnToMenu();
+  });
+
+  // ==========================================================================
+  // MOBILE CONTROLS & TOUCH HANDLING
+  // ==========================================================================
+  const mobileReverseBtn = document.getElementById('btn-reverse-gravity');
+  const mobilePauseBtn = document.getElementById('btn-mobile-pause');
+  const orientationHint = document.getElementById('orientation-hint');
+  const orientationDismiss = document.getElementById('orientation-dismiss');
+
+  // Show mobile buttons on touch devices
+  if (IS_TOUCH_DEVICE) {
+    mobileReverseBtn.style.display = 'flex';
+    mobileReverseBtn.style.alignItems = 'center';
+    mobileReverseBtn.style.justifyContent = 'center';
+    mobilePauseBtn.style.display = 'flex';
+    mobilePauseBtn.style.alignItems = 'center';
+    mobilePauseBtn.style.justifyContent = 'center';
+  }
+
+  // Reverse gravity button — touch with no delay
+  if (mobileReverseBtn) {
+    mobileReverseBtn.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (GameManager.state === 'PLAYING') {
+        AudioManager.init();
+        GameManager.reverseGravity();
+      }
+    }, { passive: false });
+
+    mobileReverseBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (GameManager.state === 'PLAYING') {
+        AudioManager.init();
+        GameManager.reverseGravity();
+      }
+    });
+  }
+
+  // Mobile pause button
+  if (mobilePauseBtn) {
+    mobilePauseBtn.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      AudioManager.init();
+      AudioManager.playClick();
+      if (GameManager.state === 'PLAYING') {
+        GameManager.pauseGame();
+      } else if (GameManager.state === 'PAUSED') {
+        GameManager.resumeGame();
+      }
+    }, { passive: false });
+
+    mobilePauseBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      AudioManager.init();
+      AudioManager.playClick();
+      if (GameManager.state === 'PLAYING') {
+        GameManager.pauseGame();
+      } else if (GameManager.state === 'PAUSED') {
+        GameManager.resumeGame();
+      }
+    });
+  }
+
+  // ==========================================================================
+  // TOUCH MOVEMENT (left/right/jump by tapping screen regions)
+  // ==========================================================================
+  let activeTouches = {};
+
+  function getTouchAction(touch) {
+    const x = touch.clientX;
+    const y = touch.clientY;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const thirdW = w / 3;
+
+    // Ignore touches on the reverse gravity button area (bottom-right corner)
+    if (x > w - 100 && y > h - 100) return null;
+    // Ignore touches on the mobile pause button area (top-right)
+    if (x > w - 70 && y < 120) return null;
+
+    if (x < thirdW) return 'left';
+    if (x > thirdW * 2) return 'right';
+    return 'jump';
+  }
+
+  function updateTouchKeys() {
+    // Reset touch-based keys
+    keys['TouchLeft'] = false;
+    keys['TouchRight'] = false;
+    keys['TouchJump'] = false;
+
+    for (const id in activeTouches) {
+      const action = activeTouches[id];
+      if (action === 'left') keys['TouchLeft'] = true;
+      if (action === 'right') keys['TouchRight'] = true;
+      if (action === 'jump') keys['TouchJump'] = true;
+    }
+  }
+
+  if (IS_TOUCH_DEVICE) {
+    const gameViewport = document.querySelector('.game-viewport');
+
+    gameViewport.addEventListener('touchstart', function(e) {
+      if (GameManager.state !== 'PLAYING') return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const action = getTouchAction(touch);
+        if (action) {
+          activeTouches[touch.identifier] = action;
+        }
+      }
+      updateTouchKeys();
+    }, { passive: true });
+
+    gameViewport.addEventListener('touchend', function(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        delete activeTouches[e.changedTouches[i].identifier];
+      }
+      updateTouchKeys();
+    }, { passive: true });
+
+    gameViewport.addEventListener('touchcancel', function(e) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        delete activeTouches[e.changedTouches[i].identifier];
+      }
+      updateTouchKeys();
+    }, { passive: true });
+  }
+
+  // ==========================================================================
+  // ORIENTATION HINT
+  // ==========================================================================
+  let orientationDismissed = false;
+
+  function checkOrientation() {
+    if (!IS_TOUCH_DEVICE || orientationDismissed) return;
+    const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+    if (isPortrait) {
+      orientationHint.classList.add('visible');
     } else {
-      // Negative gravity (Reverse)
-      gravityMeterBar.style.left = (50 + percentage) + '%';
-      gravityMeterBar.style.width = Math.abs(percentage) + '%';
-      gravityMeterBar.style.backgroundColor = 'var(--neon-pink)';
+      orientationHint.classList.remove('visible');
     }
   }
-  
-  function updateActivePresetClass(currentG) {
-    // Highlight presets depending on exact slider value match
-    const presets = [presetEarth, presetMoon, presetMars, presetZero, presetReverse];
-    presets.forEach(p => p.classList.remove('active'));
-    
-    if (Math.abs(currentG - 9.81) < 0.05) presetEarth.classList.add('active');
-    else if (Math.abs(currentG - 1.62) < 0.05) presetMoon.classList.add('active');
-    else if (Math.abs(currentG - 3.71) < 0.05) presetMars.classList.add('active');
-    else if (Math.abs(currentG - 0.00) < 0.05) presetZero.classList.add('active');
-    else if (Math.abs(currentG - (-9.81)) < 0.05) presetReverse.classList.add('active');
+
+  if (orientationDismiss) {
+    orientationDismiss.addEventListener('click', function() {
+      orientationDismissed = true;
+      orientationHint.classList.add('dismissed');
+      orientationHint.classList.remove('visible');
+    });
+    orientationDismiss.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      orientationDismissed = true;
+      orientationHint.classList.add('dismissed');
+      orientationHint.classList.remove('visible');
+    }, { passive: false });
+  }
+
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', function() {
+    setTimeout(checkOrientation, 100);
+  });
+  checkOrientation();
+
+  // ==========================================================================
+  // SCROLL & ZOOM PREVENTION
+  // ==========================================================================
+  document.addEventListener('touchmove', function(e) {
+    if (GameManager.state === 'PLAYING') {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener('contextmenu', function(e) {
+    if (GameManager.state === 'PLAYING') {
+      e.preventDefault();
+    }
+  });
+
+  // Prevent double-tap zoom
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // ==========================================================================
+  // 14. CANVAS RESIZE
+  // ==========================================================================
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = GameManager.canvas.parentElement.clientWidth;
+    const h = GameManager.canvas.parentElement.clientHeight;
+    GameManager.canvas.width = w * dpr;
+    GameManager.canvas.height = h * dpr;
+    GameManager.ctx.scale(dpr, dpr);
+    // Needed to map logical pixels in our game logic to the context
+    GameManager.canvas.style.width = w + 'px';
+    GameManager.canvas.style.height = h + 'px';
+    // Update internal resolution for logic bounds
+    Object.defineProperty(GameManager.canvas, 'clientWidth', { value: w, configurable: true });
+    Object.defineProperty(GameManager.canvas, 'clientHeight', { value: h, configurable: true });
+
+    // Reposition stars that are outside new bounds
+    stars.forEach(star => {
+      if (star.x > w) star.x = Math.random() * w;
+      if (star.y > h) star.y = Math.random() * h;
+    });
   }
 
   // ==========================================================================
-  // EVENT LISTENERS & USER INPUTS
+  // 15. INITIALIZATION
   // ==========================================================================
-  
-  function setupEventListeners() {
-    
-    // Play/Pause Playback
-    btnPlayPause.addEventListener('click', () => {
-      isRunning = !isRunning;
-      if (isRunning) {
-        btnPlayPause.className = 'btn btn-primary';
-        btnPlayPause.innerHTML = '<i class="fa-solid fa-pause"></i> <span id="txt-play-pause">Pause</span>';
-      } else {
-        btnPlayPause.className = 'btn btn-secondary';
-        btnPlayPause.innerHTML = '<i class="fa-solid fa-play"></i> <span id="txt-play-pause">Play</span>';
-        
-        // Add styling indicator
-        btnPlayPause.style.borderColor = 'var(--neon-yellow)';
-      }
-    });
-
-    // Reset Simulation parameters
-    btnReset.addEventListener('click', () => {
-      gravity = DEFAULT_GRAVITY;
-      sliderGravity.value = DEFAULT_GRAVITY;
-      updateActivePresetClass(gravity);
-      updateGravityHUD();
-      
-      // Reset spawner settings
-      selectedColor = '#00f3ff';
-      spawnRadius = 20;
-      spawnRestitution = 0.8;
-      
-      // Update sliders and text values
-      sliderRadius.value = 20;
-      valRadius.textContent = '20 px';
-      sliderBounce.value = 0.8;
-      valBounce.textContent = '0.80';
-      
-      // Reset color swatches active state
-      const swatches = colorSwatches.querySelectorAll('.swatch');
-      swatches.forEach(s => s.classList.remove('active'));
-      swatches[0].classList.add('active');
-      pickerColor.value = '#00f3ff';
-      
-      // Clear and respawn default balls
-      balls = [];
-      spawnInitialBalls();
-      
-      // Ensure running
-      if (!isRunning) {
-        btnPlayPause.click();
-      }
-    });
-
-    // Clear Screen
-    btnClear.addEventListener('click', () => {
-      balls = [];
-    });
-
-    // Gravity Slider events
-    sliderGravity.addEventListener('input', (e) => {
-      gravity = parseFloat(e.target.value);
-      updateActivePresetClass(gravity);
-      updateGravityHUD();
-    });
-
-    // Preset buttons clicks
-    const presetButtons = [presetEarth, presetMoon, presetMars, presetZero, presetReverse];
-    presetButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const val = parseFloat(btn.getAttribute('data-g'));
-        gravity = val;
-        sliderGravity.value = val;
-        updateActivePresetClass(val);
-        updateGravityHUD();
-      });
-    });
-
-    // Radius Custom Slider
-    sliderRadius.addEventListener('input', (e) => {
-      spawnRadius = parseInt(e.target.value);
-      valRadius.textContent = spawnRadius + ' px';
-    });
-
-    // Bounciness (Elasticity) Slider
-    sliderBounce.addEventListener('input', (e) => {
-      spawnRestitution = parseFloat(e.target.value);
-      valBounce.textContent = spawnRestitution.toFixed(2);
-    });
-
-    // Color Swatch Selection
-    colorSwatches.addEventListener('click', (e) => {
-      const swatch = e.target.closest('.swatch');
-      if (swatch) {
-        colorSwatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-        swatch.classList.add('active');
-        selectedColor = swatch.getAttribute('data-color');
-        pickerColor.value = selectedColor;
-      }
-    });
-
-    // Color Picker Event
-    pickerColor.addEventListener('input', (e) => {
-      selectedColor = e.target.value;
-      // Remove active classes on pre-selected color swatches
-      colorSwatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-    });
-
-    // ==========================================================================
-    // CLICK / DRAG SPING BALL CONTROLLER (SLINGSHOT MECHANICS)
-    // ==========================================================================
-    
-    function getCanvasCoordinates(e) {
-      const rect = canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-      };
-    }
-
-    function handleStart(e) {
-      const coords = getCanvasCoordinates(e);
-      isDragging = true;
-      dragStart = { ...coords };
-      dragCurrent = { ...coords };
-      
-      // Setup helper UI
-      dragCircle.setAttribute('cx', dragStart.x);
-      dragCircle.setAttribute('cy', dragStart.y);
-      dragCircle.setAttribute('r', spawnRadius);
-      dragCircle.setAttribute('stroke', selectedColor);
-      
-      dragLine.setAttribute('x1', dragStart.x);
-      dragLine.setAttribute('y1', dragStart.y);
-      dragLine.setAttribute('x2', dragStart.x);
-      dragLine.setAttribute('y2', dragStart.y);
-      dragLine.setAttribute('stroke', selectedColor);
-      
-      dragHelper.style.display = 'block';
-    }
-
-    function handleMove(e) {
-      if (!isDragging) return;
-      
-      const coords = getCanvasCoordinates(e);
-      dragCurrent = { ...coords };
-      
-      // Update line pointing opposite direction for slingshot release (or direct pull)
-      // We will make it pull back slingshot style!
-      dragLine.setAttribute('x2', dragCurrent.x);
-      dragLine.setAttribute('y2', dragCurrent.y);
-    }
-
-    function handleEnd() {
-      if (!isDragging) return;
-      isDragging = false;
-      dragHelper.style.display = 'none';
-      
-      const dx = dragStart.x - dragCurrent.x;
-      const dy = dragStart.y - dragCurrent.y;
-      const dragDistance = Math.sqrt(dx * dx + dy * dy);
-      
-      let initVx = 0;
-      let initVy = 0;
-      
-      // If drag distance is very small, treat as a single click and apply small random velocity
-      if (dragDistance < 6) {
-        initVx = (Math.random() - 0.5) * 120;
-        initVy = (Math.random() - 0.5) * 120;
-      } else {
-        // Slingshot: Ball shoots in direction of pull vector.
-        // Scale the drag vector to represent launch velocity in pixels/second.
-        const speedScale = 2.8; 
-        initVx = dx * speedScale;
-        initVy = dy * speedScale;
-      }
-      
-      // Spawn new Ball
-      balls.push(new Ball(
-        dragStart.x, 
-        dragStart.y, 
-        spawnRadius, 
-        selectedColor, 
-        spawnRestitution, 
-        initVx, 
-        initVy
-      ));
-    }
-
-    // Canvas Mouse listeners
-    canvas.addEventListener('mousedown', handleStart);
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleEnd);
-    
-    // Canvas Touch listeners (Mobile support)
-    canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault(); // Stop scrolling when dragging on canvas
-      handleStart(e);
-    }, { passive: false });
-    
-    window.addEventListener('touchmove', (e) => {
-      if (isDragging) e.preventDefault();
-      handleMove(e);
-    }, { passive: false });
-    
-    window.addEventListener('touchend', handleEnd);
-
-    // ==========================================================================
-    // INSTRUCTIONS MODAL LOGIC
-    // ==========================================================================
-    
-    btnInstructions.addEventListener('click', () => {
-      modalInstructions.classList.add('open');
-    });
-
-    const closeInstructionsFunc = () => {
-      modalInstructions.classList.remove('open');
-    };
-
-    btnCloseInstructions.addEventListener('click', closeInstructionsFunc);
-    btnCloseInstructionsFooter.addEventListener('click', closeInstructionsFunc);
-    
-    // Close on clicking overlay background
-    modalInstructions.addEventListener('click', (e) => {
-      if (e.target === modalInstructions) closeInstructionsFunc();
-    });
-
-    // ==========================================================================
-    // GEMINI CHAT COPILOT LOGIC (READY FOR CLOUD API UPGRADES)
-    // ==========================================================================
-    const geminiToggle = document.getElementById('gemini-toggle');
-    const geminiChatWindow = document.getElementById('gemini-chat-window');
-    const geminiClose = document.getElementById('gemini-close');
-    const geminiInput = document.getElementById('gemini-input');
-    const geminiSendBtn = document.getElementById('gemini-send-btn');
-    const geminiMessages = document.getElementById('gemini-messages');
-
-    geminiToggle.addEventListener('click', () => {
-      geminiChatWindow.classList.toggle('open');
-      if (geminiChatWindow.classList.contains('open')) {
-        geminiToggle.style.display = 'none';
-        geminiInput.focus();
-      }
-    });
-
-    geminiClose.addEventListener('click', () => {
-      geminiChatWindow.classList.remove('open');
-      geminiToggle.style.display = 'flex';
-    });
-
-    const addMessage = (sender, text, type = 'ai') => {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `message ${type}`;
-      
-      const avatarIcon = type === 'user' ? 'fa-user' : (type === 'system' ? 'fa-robot' : 'fa-wand-magic-sparkles');
-      
-      msgDiv.innerHTML = `
-        <div class="msg-avatar"><i class="fa-solid ${avatarIcon}"></i></div>
-        <div class="msg-text">${text}</div>
-      `;
-      
-      geminiMessages.appendChild(msgDiv);
-      geminiMessages.scrollTop = geminiMessages.scrollHeight;
-    };
-
-    const processCommand = (query) => {
-      const q = query.toLowerCase().trim();
-      
-      // 1. Set gravity preset
-      if (q.includes('set gravity to') || q.includes('change gravity to') || q.includes('gravity =')) {
-        let value = 0;
-        let name = '';
-        if (q.includes('earth')) { value = 9.81; name = 'Earth'; }
-        else if (q.includes('moon')) { value = 1.62; name = 'Moon'; }
-        else if (q.includes('mars')) { value = 3.71; name = 'Mars'; }
-        else if (q.includes('zero') || q.includes('no gravity')) { value = 0.00; name = 'Zero-G'; }
-        else if (q.includes('reverse')) { value = -9.81; name = 'Reverse Gravity'; }
-        else {
-          const match = q.match(/[-+]?[0-9]*\.?[0-9]+/);
-          if (match) {
-            value = parseFloat(match[0]);
-            if (value < -20) value = -20;
-            if (value > 20) value = 20;
-            name = `${value.toFixed(2)} m/s²`;
-          } else {
-            return "I couldn't parse the gravity value. Try typing 'set gravity to 12.5' or 'set gravity to earth'.";
-          }
-        }
-        
-        gravity = value;
-        sliderGravity.value = value;
-        updateActivePresetClass(value);
-        updateGravityHUD();
-        return `Successfully adjusted simulator gravity to **${name}** (${value} m/s²).`;
-      }
-      
-      // 2. Spawn balls
-      if (q.includes('spawn') || q.includes('add ball') || q.includes('create ball')) {
-        let count = 1;
-        const countMatch = q.match(/\d+/);
-        if (countMatch) count = parseInt(countMatch[0]);
-        if (count > 25) count = 25; // Safety cap
-        
-        let color = selectedColor;
-        if (q.includes('red')) color = '#ef4444';
-        else if (q.includes('blue')) color = '#3b82f6';
-        else if (q.includes('green')) color = '#00ff66';
-        else if (q.includes('purple') || q.includes('violet')) color = '#bd00ff';
-        else if (q.includes('pink')) color = '#ff007c';
-        else if (q.includes('yellow') || q.includes('orange')) color = '#ffaa00';
-        else if (q.includes('cyan')) color = '#00f3ff';
-        
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        for (let i = 0; i < count; i++) {
-          const rx = w * 0.2 + Math.random() * (w * 0.6);
-          const ry = h * 0.2 + Math.random() * (h * 0.3);
-          const vx = (Math.random() - 0.5) * 300;
-          const vy = (Math.random() - 0.5) * 200;
-          balls.push(new Ball(rx, ry, spawnRadius, color, spawnRestitution, vx, vy));
-        }
-        return `Spawned **${count}** ball(s) with color <span style="color:${color}">${color}</span> into the simulation!`;
-      }
-      
-      // 3. Reset/Clear simulation
-      if (q.includes('reset') || q.includes('restart')) {
-        btnReset.click();
-        return "Simulation parameters and ball configurations have been reset to default values.";
-      }
-      if (q.includes('clear') || q.includes('delete all')) {
-        btnClear.click();
-        return "Cleared all active balls from the viewport.";
-      }
-      
-      // 4. Educational physics questions
-      if (q.includes('gravity') || q.includes('what is') || q.includes('explain') || q.includes('why')) {
-        return `**Physics Explainer:** Gravity is the force by which a planet or other body draws objects toward its center. On Earth, gravity accelerates falling objects at roughly **9.81 m/s²**. 
-        <br><br>
-        In this simulator, if you decrease gravity (e.g. Moon mode at 1.62 m/s²), the downward acceleration decreases, meaning balls fall slower and bounce higher. In Zero-G, there is no downward force, so balls continue moving in straight paths at constant speeds.`;
-      }
-      
-      // Default info message
-      return `I received your message! To make this fully generative, connect a server-side Gemini API route. 
-      <br><br>
-      *Current client-side automation commands:*
-      - **set gravity to [earth/moon/mars/zero/reverse/number]**
-      - **spawn [number] [color] balls**
-      - **clear** or **reset**
-      - **explain gravity**`;
-    };
-
-    const handleSendMessage = () => {
-      const text = geminiInput.value.trim();
-      if (!text) return;
-      
-      addMessage('User', text, 'user');
-      geminiInput.value = '';
-      
-      // Mock loading state
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'message ai';
-      loadingDiv.innerHTML = `
-        <div class="msg-avatar"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-        <div class="msg-text">Gemini is writing code...</div>
-      `;
-      geminiMessages.appendChild(loadingDiv);
-      geminiMessages.scrollTop = geminiMessages.scrollHeight;
-      
-      setTimeout(() => {
-        geminiMessages.removeChild(loadingDiv);
-        const responseText = processCommand(text);
-        addMessage('Gemini AI', responseText, 'ai');
-      }, 700);
-    };
-
-    geminiSendBtn.addEventListener('click', handleSendMessage);
-    geminiInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleSendMessage();
-    });
-  }
-
-  // Run initialization
-  window.addEventListener('DOMContentLoaded', init);
+  GameManager.init();
+  lastTime = performance.now();
+  fpsLastTime = lastTime;
+  requestAnimationFrame(loop);
 })();

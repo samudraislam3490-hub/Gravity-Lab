@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gravity Lab: Interactive Physics Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gravity Lab: Educational Arcade Game</title>
   <!-- SEO & Meta -->
-  <meta name="description" content="An interactive gravity simulator featuring customizable physics parameters, multiple planetary gravity presets, vector visualizations, and smooth canvas mechanics.">
-  <meta name="keywords" content="gravity, physics, simulator, interactive, HTML5, canvas, space, science">
+  <meta name="description" content="An educational arcade game where you control gravity to survive, collect energy crystals, and learn real physics concepts. Master gravity, dodge obstacles, beat your high score!">
+  <meta name="keywords" content="gravity, physics, arcade game, educational, HTML5, canvas, space, science, crystals">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,261 +26,196 @@
         <i class="fa-solid fa-atom logo-icon"></i>
         <span>GRAVITY<span class="logo-accent">LAB</span></span>
       </div>
-      <div class="header-actions">
-        <button id="btn-instructions" class="btn btn-secondary">
-          <i class="fa-solid fa-circle-question"></i> How to Use
-        </button>
-        <a href="https://github.com" target="_blank" class="github-link"><i class="fa-brands fa-github"></i></a>
+      <div class="header-game-info">
+        <div class="header-score-group" id="header-score-group">
+          <div class="header-stat">
+            <span class="header-stat-label">SCORE</span>
+            <span class="header-stat-value font-mono" id="header-score">0</span>
+          </div>
+          <div class="header-stat">
+            <span class="header-stat-label">HIGH SCORE</span>
+            <span class="header-stat-value font-mono" id="header-highscore">0</span>
+          </div>
+        </div>
       </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="app-main">
-      
-      <!-- Left Sidebar: Controls -->
-      <aside class="control-panel">
-        <!-- Simulation Control -->
-        <section class="control-group">
-          <h3><i class="fa-solid fa-gamepad"></i> Simulation</h3>
-          <div class="btn-grid">
-            <button id="btn-play-pause" class="btn btn-primary" title="Start/Pause Simulation">
-              <i class="fa-solid fa-pause"></i> <span id="txt-play-pause">Pause</span>
-            </button>
-            <button id="btn-reset" class="btn btn-secondary" title="Reset Simulation Properties">
-              <i class="fa-solid fa-rotate-left"></i> Reset
-            </button>
-            <button id="btn-clear" class="btn btn-danger" title="Remove all balls">
-              <i class="fa-solid fa-trash-can"></i> Clear
-            </button>
-          </div>
-        </section>
+    <!-- Game Viewport (full width, no sidebar) -->
+    <main class="game-main">
+      <section class="game-viewport">
+        <canvas id="game-canvas"></canvas>
 
-        <!-- Gravity Settings -->
-        <section class="control-group">
-          <div class="group-header">
-            <h3><i class="fa-solid fa-circle-down"></i> Gravity strength</h3>
-            <span class="hud-value" id="val-gravity-readout">9.8<span class="unit"> m/s²</span></span>
-          </div>
-          
-          <div class="slider-container">
-            <input type="range" id="slider-gravity" min="-20" max="20" step="0.1" value="9.8">
-            <div class="slider-labels">
-              <span>-20</span>
-              <span>0 (Zero-G)</span>
-              <span>20</span>
+        <!-- In-Game HUD Overlay -->
+        <div class="game-hud" id="game-hud">
+          <div class="hud-left">
+            <div class="hud-score-display">
+              <span class="hud-score-label">SCORE</span>
+              <span class="hud-score-value font-mono" id="hud-score">0</span>
             </div>
           </div>
-
-          <div class="preset-container">
-            <span class="preset-title">Planetary Presets</span>
-            <div class="preset-grid">
-              <button class="btn btn-preset" data-g="9.81" id="preset-earth">
-                <i class="fa-solid fa-earth-americas text-blue"></i> Earth (9.81)
-              </button>
-              <button class="btn btn-preset" data-g="1.62" id="preset-moon">
-                <i class="fa-solid fa-moon text-gray"></i> Moon (1.62)
-              </button>
-              <button class="btn btn-preset" data-g="3.71" id="preset-mars">
-                <i class="fa-solid fa-meteor text-red"></i> Mars (3.71)
-              </button>
-              <button class="btn btn-preset" data-g="0" id="preset-zero">
-                <i class="fa-solid fa-space-shuttle text-cyan"></i> Zero-G (0)
-              </button>
-              <button class="btn btn-preset" data-g="-9.81" id="preset-reverse">
-                <i class="fa-solid fa-circle-up text-pink"></i> Reverse (-9.81)
-              </button>
+          <div class="hud-center">
+            <div class="gravity-indicator" id="gravity-indicator">
+              <i class="fa-solid fa-arrow-down" id="gravity-arrow"></i>
+              <span class="gravity-label font-mono" id="gravity-label">9.8 m/s²</span>
             </div>
           </div>
-        </section>
-
-        <!-- Ball Configuration -->
-        <section class="control-group">
-          <h3><i class="fa-solid fa-sliders"></i> Ball Spawner Properties</h3>
-          
-          <!-- Ball Color Swatches -->
-          <div class="config-item">
-            <label>Spawn Color</label>
-            <div class="color-picker-wrapper">
-              <div class="color-swatches" id="color-swatches">
-                <div class="swatch active" data-color="#00f3ff" style="background-color: #00f3ff;"></div>
-                <div class="swatch" data-color="#bd00ff" style="background-color: #bd00ff;"></div>
-                <div class="swatch" data-color="#ff007c" style="background-color: #ff007c;"></div>
-                <div class="swatch" data-color="#00ff66" style="background-color: #00ff66;"></div>
-                <div class="swatch" data-color="#ffaa00" style="background-color: #ffaa00;"></div>
-              </div>
-              <div class="custom-color-btn">
-                <input type="color" id="picker-color" value="#00f3ff">
-                <i class="fa-solid fa-palette"></i>
-              </div>
+          <div class="hud-right">
+            <div class="hud-highscore-display">
+              <span class="hud-highscore-label">BEST</span>
+              <span class="hud-highscore-value font-mono" id="hud-highscore">0</span>
             </div>
-          </div>
-
-          <!-- Ball Radius -->
-          <div class="config-item">
-            <div class="config-label-row">
-              <label for="slider-radius">Radius (Size)</label>
-              <span id="val-radius">20 px</span>
+            <div class="hud-fps">
+              <span class="font-mono" id="hud-fps">60</span> FPS
             </div>
-            <input type="range" id="slider-radius" min="10" max="60" value="20">
-          </div>
-
-          <!-- Ball Restitution (Bounce) -->
-          <div class="config-item">
-            <div class="config-label-row">
-              <label for="slider-bounce">Bounciness (Elasticity)</label>
-              <span id="val-bounce">0.80</span>
-            </div>
-            <input type="range" id="slider-bounce" min="0.0" max="1.0" step="0.05" value="0.80">
-          </div>
-          
-          <div class="info-tip">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Click or click-and-drag inside the viewport to launch custom balls!</span>
-          </div>
-        </section>
-
-        <!-- Display Toggles -->
-        <section class="control-group">
-          <h3><i class="fa-solid fa-eye"></i> Visuals & Rules</h3>
-          <div class="toggle-list">
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-grid" checked>
-              <span class="slider"></span>
-              <span class="toggle-label"><i class="fa-solid fa-table-cells"></i> Background Grid</span>
-            </label>
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-trails" checked>
-              <span class="slider"></span>
-              <span class="toggle-label"><i class="fa-solid fa-wave-square"></i> Motion Trails</span>
-            </label>
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-vectors" checked>
-              <span class="slider"></span>
-              <span class="toggle-label"><i class="fa-solid fa-arrow-right-long"></i> Velocity Vectors</span>
-            </label>
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-collisions" checked>
-              <span class="slider"></span>
-              <span class="toggle-label"><i class="fa-solid fa-explosion"></i> Ball Collisions</span>
-            </label>
-          </div>
-        </section>
-      </aside>
-
-      <!-- Center Space: Physics Canvas & Live HUD Overlay -->
-      <section class="simulation-viewport">
-        <canvas id="physics-canvas"></canvas>
-        
-        <!-- Live HUD Overlay -->
-        <div class="viewport-hud">
-          <div class="hud-card" id="hud-gravity">
-            <span class="hud-card-label">GRAVITY</span>
-            <span class="hud-card-value font-mono" id="hud-gravity-val">9.8 m/s²</span>
-            <!-- Graphic mini meter -->
-            <div class="gravity-meter-visual">
-              <div class="gravity-meter-bar" id="gravity-meter-bar"></div>
-            </div>
-          </div>
-          <div class="hud-card">
-            <span class="hud-card-label">ACTIVE BALLS</span>
-            <span class="hud-card-value font-mono" id="hud-balls-val">0</span>
-          </div>
-          <div class="hud-card">
-            <span class="hud-card-label">PEAK SPEED</span>
-            <span class="hud-card-value font-mono text-pink" id="hud-speed-val">0.0<span class="hud-card-unit"> px/s</span></span>
-          </div>
-          <div class="hud-card" id="hud-fps-container">
-            <span class="hud-card-label">FPS</span>
-            <span class="hud-card-value font-mono text-green" id="hud-fps-val">60</span>
           </div>
         </div>
 
-        <!-- Launch Indicator/Hint for clicking and dragging -->
-        <div id="drag-helper" class="drag-helper">
-          <svg width="100%" height="100%" id="drag-helper-svg">
-            <line x1="0" y1="0" x2="0" y2="0" id="drag-line" class="drag-line"/>
-            <circle cx="0" cy="0" r="10" id="drag-circle" class="drag-circle"/>
-          </svg>
+        <!-- Score Popup Container (for floating +10 texts) -->
+        <div class="score-popups" id="score-popups"></div>
+
+        <!-- Orientation Hint (portrait mode) -->
+        <div class="orientation-hint" id="orientation-hint">
+          <div class="orientation-hint-content">
+            <i class="fa-solid fa-mobile-screen-button orientation-icon"></i>
+            <p>Rotate your device for the best experience</p>
+            <span class="orientation-dismiss" id="orientation-dismiss">Tap to continue anyway</span>
+          </div>
         </div>
 
-        <!-- Gemini AI Physics Assistant Widget -->
-        <div class="gemini-chat-widget" id="gemini-widget">
-          <button class="gemini-toggle-btn" id="gemini-toggle" title="Open Gemini AI Assistant">
-            <i class="fa-solid fa-wand-magic-sparkles sparkle-icon"></i>
-            <span>Gemini AI</span>
-          </button>
-          
-          <div class="gemini-chat-window glass-card" id="gemini-chat-window">
-            <div class="gemini-chat-header">
-              <div class="gemini-title">
-                <i class="fa-solid fa-wand-magic-sparkles text-purple"></i>
-                <div>
-                  <h4>Gemini AI Copilot</h4>
-                  <span class="status-indicator">Ready to assist</span>
-                </div>
-              </div>
-              <button class="btn-close-chat" id="gemini-close"><i class="fa-solid fa-minus"></i></button>
+        <!-- ============================== -->
+        <!-- GAME SCREEN OVERLAYS           -->
+        <!-- ============================== -->
+
+        <!-- Main Menu Screen -->
+        <div class="game-overlay" id="screen-menu">
+          <div class="overlay-content menu-content">
+            <div class="menu-logo">
+              <i class="fa-solid fa-atom menu-logo-icon"></i>
+              <h1 class="menu-title">GRAVITY<span class="logo-accent">LAB</span></h1>
+              <p class="menu-subtitle">Experimental Gravity Chamber</p>
             </div>
-            
-            <div class="gemini-messages" id="gemini-messages">
-              <div class="message system">
-                <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
-                <div class="msg-text">
-                  Welcome to **Gravity Lab v1.0**! I am your AI Copilot. 
-                  <br><br>
-                  I can automatically execute physics settings or answer questions. Try typing:
-                  <ul>
-                    <li><code>set gravity to moon</code></li>
-                    <li><code>spawn 5 red balls</code></li>
-                    <li><code>explain gravity</code></li>
-                  </ul>
-                  <small class="msg-note">API connection ready. Setup API Key in cloud settings to unlock fully generative responses.</small>
-                </div>
+            <div class="menu-buttons">
+              <button id="btn-play" class="btn btn-primary btn-large">
+                <i class="fa-solid fa-play"></i> Play
+              </button>
+              <button id="btn-menu-instructions" class="btn btn-secondary btn-large">
+                <i class="fa-solid fa-circle-question"></i> Instructions
+              </button>
+            </div>
+            <div class="menu-footer">
+              <span class="menu-hint font-mono desktop-hint">Press ENTER to start</span>
+              <span class="menu-hint font-mono mobile-hint">Tap Play to start</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructions Screen -->
+        <div class="game-overlay hidden" id="screen-instructions">
+          <div class="overlay-content instructions-content glass-card">
+            <div class="overlay-header">
+              <h2><i class="fa-solid fa-circle-question"></i> How to Play</h2>
+              <button id="btn-close-instructions" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overlay-body instructions-body">
+              <div class="instruction-step">
+                <h3><i class="fa-solid fa-arrow-up"></i> 1. Control Gravity</h3>
+                <p>Press <kbd>SPACE</kbd> or tap the <strong>⟳ Reverse</strong> button (mobile) to <strong>reverse gravity</strong>. Your ball will fall upward or downward depending on the current direction. Watch the gravity indicator arrow!</p>
+              </div>
+              <div class="instruction-step">
+                <h3><i class="fa-solid fa-arrows-left-right"></i> 2. Move & Jump</h3>
+                <p><strong>Desktop:</strong> Use <kbd>←</kbd> <kbd>→</kbd> arrow keys or <kbd>A</kbd> <kbd>D</kbd> to move. Press <kbd>↑</kbd> or <kbd>W</kbd> to jump.<br><strong>Mobile:</strong> Tap left/right sides of the screen to move. Tap the screen center to jump.</p>
+              </div>
+              <div class="instruction-step">
+                <h3><i class="fa-solid fa-diamond text-cyan"></i> 3. Collect Crystals</h3>
+                <p>Grab the glowing <strong>blue energy crystals</strong> for <strong>+10 points</strong> each. They respawn after collection.</p>
+              </div>
+              <div class="instruction-step">
+                <h3><i class="fa-solid fa-skull-crossbones text-red"></i> 4. Avoid Obstacles</h3>
+                <p>Red spikes, blocks, and lasers will destroy you on contact. They get faster and more frequent over time!</p>
+              </div>
+              <div class="instruction-step">
+                <h3><i class="fa-solid fa-trophy text-yellow"></i> 5. Survive & Score</h3>
+                <p>Score increases <strong>+1 per second</strong> survived. Beat your high score! A random gravity fact appears after each game.</p>
               </div>
             </div>
-            
-            <div class="gemini-chat-input-area">
-              <input type="text" id="gemini-input" placeholder="Ask Gemini..." autocomplete="off">
-              <button id="gemini-send-btn" class="btn btn-primary btn-icon" title="Send message">
-                <i class="fa-solid fa-paper-plane"></i>
+            <div class="overlay-footer">
+              <button id="btn-instructions-back" class="btn btn-primary">Got it!</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Countdown Overlay -->
+        <div class="game-overlay hidden" id="screen-countdown">
+          <div class="overlay-content countdown-content">
+            <span class="countdown-number font-mono" id="countdown-number">3</span>
+          </div>
+        </div>
+
+        <!-- Pause Screen -->
+        <div class="game-overlay hidden" id="screen-pause">
+          <div class="overlay-content pause-content glass-card">
+            <h2 class="pause-title"><i class="fa-solid fa-pause"></i> PAUSED</h2>
+            <div class="pause-buttons">
+              <button id="btn-resume" class="btn btn-primary btn-large">
+                <i class="fa-solid fa-play"></i> Resume
+              </button>
+              <button id="btn-pause-menu" class="btn btn-secondary btn-large">
+                <i class="fa-solid fa-house"></i> Main Menu
+              </button>
+            </div>
+            <p class="pause-hint font-mono"><span class="desktop-hint">Press ESC to resume</span><span class="mobile-hint">Tap Resume to continue</span></p>
+          </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div class="game-overlay hidden" id="screen-gameover">
+          <div class="overlay-content gameover-content glass-card">
+            <h2 class="gameover-title"><i class="fa-solid fa-skull"></i> GAME OVER</h2>
+            <div class="gameover-new-highscore hidden" id="gameover-new-hs">
+              <i class="fa-solid fa-star"></i> NEW HIGH SCORE! <i class="fa-solid fa-star"></i>
+            </div>
+            <div class="gameover-stats">
+              <div class="gameover-stat">
+                <span class="gameover-stat-label">Final Score</span>
+                <span class="gameover-stat-value font-mono" id="gameover-score">0</span>
+              </div>
+              <div class="gameover-stat">
+                <span class="gameover-stat-label">High Score</span>
+                <span class="gameover-stat-value font-mono" id="gameover-highscore">0</span>
+              </div>
+              <div class="gameover-stat">
+                <span class="gameover-stat-label">Time Survived</span>
+                <span class="gameover-stat-value font-mono" id="gameover-time">0s</span>
+              </div>
+            </div>
+            <div class="gameover-fact" id="gameover-fact">
+              <i class="fa-solid fa-lightbulb"></i>
+              <p id="gameover-fact-text">The Moon's gravity is only about 1/6 of Earth's.</p>
+            </div>
+            <div class="gameover-buttons">
+              <button id="btn-play-again" class="btn btn-primary btn-large">
+                <i class="fa-solid fa-rotate-right"></i> Play Again
+              </button>
+              <button id="btn-gameover-menu" class="btn btn-secondary btn-large">
+                <i class="fa-solid fa-house"></i> Main Menu
               </button>
             </div>
           </div>
         </div>
+
       </section>
 
-    </main>
+      <!-- Mobile Controls -->
+      <button class="mobile-btn mobile-reverse-btn" id="btn-reverse-gravity" aria-label="Reverse Gravity">
+        <i class="fa-solid fa-arrow-up-down"></i>
+      </button>
+      <button class="mobile-btn mobile-pause-btn" id="btn-mobile-pause" aria-label="Pause Game">
+        <i class="fa-solid fa-pause"></i>
+      </button>
 
-    <!-- Instruction Modal -->
-    <div id="modal-instructions" class="modal-overlay">
-      <div class="modal-content glass-card">
-        <div class="modal-header">
-          <h2><i class="fa-solid fa-circle-question"></i> How to Use Gravity Lab</h2>
-          <button id="btn-close-instructions" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="modal-body instructions-body">
-          <div class="instruction-step">
-            <h3><i class="fa-solid fa-mouse-pointer"></i> 1. Spawn & Launch Balls</h3>
-            <p><strong>Click</strong> inside the viewport to spawn a ball at that position. <strong>Click and drag</strong> to aim and launch a ball with a custom velocity vector (indicated by the blue arrow).</p>
-          </div>
-          <div class="instruction-step">
-            <h3><i class="fa-solid fa-sliders"></i> 2. Configure Settings</h3>
-            <p>Adjust the <strong>Gravity strength</strong> slider or select standard <strong>Planetary Presets</strong> (Earth, Moon, Mars, Zero-G, or Reverse). Modify <strong>Ball Spawner Properties</strong> like radius, color, and bounciness before spawning.</p>
-          </div>
-          <div class="instruction-step">
-            <h3><i class="fa-solid fa-eye"></i> 3. Customize Visuals</h3>
-            <p>Toggle the <strong>Background Grid</strong>, <strong>Motion Trails</strong>, <strong>Velocity Vectors</strong>, and <strong>Ball Collisions</strong> to observe trajectories, kinetic energy transfers, and velocity directions.</p>
-          </div>
-          <div class="instruction-step">
-            <h3><i class="fa-solid fa-wand-magic-sparkles"></i> 4. Ask Gemini AI Copilot</h3>
-            <p>Click the <strong>Gemini AI</strong> bubble in the bottom right corner and try typing natural commands like <code>spawn 5 red balls</code> or <code>set gravity to moon</code> to control the simulator automatically!</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button id="btn-close-instructions-footer" class="btn btn-primary">Got it!</button>
-        </div>
-      </div>
-    </div>
+      <!-- Watermark -->
+      <div class="watermark" id="watermark">Created &amp; Developed by Shahriar</div>
+    </main>
   </div>
 
   <script src="app.js"></script>
