@@ -1,23 +1,25 @@
 (function() {
   // ==========================================================================
-  // 1. CONSTANTS & CONFIG
+  // 1. CONSTANTS & CONFIG (CALM, BEGINNER-FRIENDLY BALANCING)
   // ==========================================================================
   const PX_PER_METER = 60;
   const DEFAULT_GRAVITY = 9.81;
-  const PLAYER_RADIUS = 18;
-  const PLAYER_RESTITUTION = 0.7;
-  const PLAYER_MOVE_SPEED = 350;
-  const PLAYER_JUMP_FORCE = -450;
-  const CRYSTAL_RADIUS = 12;
+  const PLAYER_RADIUS = 16;
+  const PLAYER_RESTITUTION = 0.65;
+  const PLAYER_MOVE_SPEED = 320;
+  const PLAYER_JUMP_FORCE = -420;
+  const CRYSTAL_RADIUS = 11;
   const CRYSTAL_SCORE = 10;
-  const OBSTACLE_BASE_SPEED = 200;
-  const BASE_SPAWN_INTERVAL = 2500;
-  const DIFFICULTY_INTERVAL = 20;
-  const MAX_PARTICLES = 60;
-  const TRAIL_MAX_LENGTH = 20;
-  const MOBILE_MAX_PARTICLES = 30;
-  const MOBILE_TRAIL_LENGTH = 10;
+  
+  // Relaxed obstacle speeds and generous spawn intervals
+  const OBSTACLE_BASE_SPEED = 120; // Calm, readable speed
+  const BASE_SPAWN_INTERVAL = 4200; // 4.2s initial interval
+  const MAX_PARTICLES = 50;
+  const TRAIL_MAX_LENGTH = 18;
+  const MOBILE_MAX_PARTICLES = 25;
+  const MOBILE_TRAIL_LENGTH = 8;
 
+  // Dynamic Gravity Modes
   const GRAVITY_MODES = [
     { name: 'Earth Gravity', value: 9.81, color: '#3b82f6' },
     { name: 'Moon Gravity', value: 1.62, color: '#9ca3af' },
@@ -25,9 +27,9 @@
     { name: 'Zero Gravity', value: 0.001, color: '#06b6d4' },
     { name: 'Reverse Gravity', value: -9.81, color: '#ec4899' }
   ];
-  const GRAVITY_SHIFT_MIN = 20; // seconds
-  const GRAVITY_SHIFT_MAX = 30;
-  const GRAVITY_WARNING_TIME = 3; // seconds before shift
+  const GRAVITY_SHIFT_MIN = 24; // 24-34s between gravity shifts
+  const GRAVITY_SHIFT_MAX = 34;
+  const GRAVITY_WARNING_TIME = 3;
 
   const GRAVITY_FACTS = [
     "The Moon's gravity is only about 1/6 of Earth's.",
@@ -64,27 +66,27 @@
 
   const THEMES = {
     'deep-space': {
-      bg: '#07090e', stars: '#ffffff', nebula1: 'rgba(0, 100, 255, 0.06)', nebula2: 'rgba(150, 0, 255, 0.05)', nebula3: 'rgba(0, 200, 200, 0.04)',
+      bg: '#05070c', stars: '#ffffff', nebula1: 'rgba(0, 100, 255, 0.06)', nebula2: 'rgba(150, 0, 255, 0.05)', nebula3: 'rgba(0, 200, 200, 0.04)',
       grid: 'rgba(0, 243, 255, 0.05)', planet1: '#3b82f6', planet2: '#9333ea', shootingStar: '#00f3ff'
     },
     'bright-sky': {
-      bg: '#0a1628', stars: '#e0e8ff', nebula1: 'rgba(100, 180, 255, 0.08)', nebula2: 'rgba(200, 220, 255, 0.06)', nebula3: 'rgba(150, 200, 255, 0.05)',
+      bg: '#081424', stars: '#e0e8ff', nebula1: 'rgba(100, 180, 255, 0.08)', nebula2: 'rgba(200, 220, 255, 0.06)', nebula3: 'rgba(150, 200, 255, 0.05)',
       grid: 'rgba(100, 180, 255, 0.05)', planet1: '#60a5fa', planet2: '#93c5fd', shootingStar: '#bfdbfe'
     },
     'sunset': {
-      bg: '#1a0a0a', stars: '#ffd4a8', nebula1: 'rgba(255, 100, 50, 0.08)', nebula2: 'rgba(200, 50, 100, 0.06)', nebula3: 'rgba(255, 150, 50, 0.05)',
+      bg: '#140608', stars: '#ffd4a8', nebula1: 'rgba(255, 100, 50, 0.08)', nebula2: 'rgba(200, 50, 100, 0.06)', nebula3: 'rgba(255, 150, 50, 0.05)',
       grid: 'rgba(255, 100, 50, 0.04)', planet1: '#f97316', planet2: '#dc2626', shootingStar: '#fbbf24'
     },
     'galaxy': {
-      bg: '#0a0520', stars: '#e8d5ff', nebula1: 'rgba(100, 0, 200, 0.08)', nebula2: 'rgba(50, 0, 150, 0.06)', nebula3: 'rgba(150, 50, 255, 0.05)',
+      bg: '#08031a', stars: '#e8d5ff', nebula1: 'rgba(100, 0, 200, 0.08)', nebula2: 'rgba(50, 0, 150, 0.06)', nebula3: 'rgba(150, 50, 255, 0.05)',
       grid: 'rgba(150, 50, 255, 0.04)', planet1: '#8b5cf6', planet2: '#6d28d9', shootingStar: '#c084fc'
     },
     'nebula': {
-      bg: '#0a0a1a', stars: '#d4f0ff', nebula1: 'rgba(80, 0, 150, 0.1)', nebula2: 'rgba(0, 150, 150, 0.07)', nebula3: 'rgba(200, 50, 150, 0.06)',
+      bg: '#080816', stars: '#d4f0ff', nebula1: 'rgba(80, 0, 150, 0.1)', nebula2: 'rgba(0, 150, 150, 0.07)', nebula3: 'rgba(200, 50, 150, 0.06)',
       grid: 'rgba(0, 200, 200, 0.04)', planet1: '#0891b2', planet2: '#a21caf', shootingStar: '#5eead4'
     },
     'dark-laboratory': {
-      bg: '#050a05', stars: '#a8d4a8', nebula1: 'rgba(0, 100, 0, 0.06)', nebula2: 'rgba(0, 60, 30, 0.04)', nebula3: 'rgba(50, 150, 50, 0.03)',
+      bg: '#040804', stars: '#a8d4a8', nebula1: 'rgba(0, 100, 0, 0.06)', nebula2: 'rgba(0, 60, 30, 0.04)', nebula3: 'rgba(50, 150, 50, 0.03)',
       grid: 'rgba(0, 200, 0, 0.04)', planet1: '#22c55e', planet2: '#166534', shootingStar: '#4ade80'
     }
   };
@@ -110,24 +112,25 @@
   // ==========================================================================
   const SettingsManager = {
     defaults: {
-      deviceMode: null,  // 'pc' or 'android', null means not selected
+      deviceMode: null,
       musicVolume: 25,
       sfxVolume: 50,
       ballColor: '#00f3ff',
       theme: 'deep-space',
-      highScores: []  // array of {score, date} objects, max 10
+      highScores: []
     },
     settings: {},
     init() {
       const saved = localStorage.getItem('gravitylab-settings');
       this.settings = saved ? { ...this.defaults, ...JSON.parse(saved) } : { ...this.defaults };
-      // Also load legacy high score
       const legacyHS = parseInt(localStorage.getItem('gravitylab-highscore')) || 0;
       if (legacyHS > 0 && this.settings.highScores.length === 0) {
-        this.settings.highScores.push({ score: legacyHS, date: 'Legacy' });
+        this.settings.highScores.push({ score: legacyHS, date: 'Best' });
       }
     },
-    save() { localStorage.setItem('gravitylab-settings', JSON.stringify(this.settings)); },
+    save() {
+      try { localStorage.setItem('gravitylab-settings', JSON.stringify(this.settings)); } catch(e) {}
+    },
     get(key) { return this.settings[key]; },
     set(key, value) { this.settings[key] = value; this.save(); },
     getHighScore() { return this.settings.highScores.length > 0 ? this.settings.highScores[0].score : 0; },
@@ -141,7 +144,7 @@
   };
 
   // ==========================================================================
-  // 3. MUSIC MANAGER (Procedural BGM)
+  // 3. MUSIC MANAGER (Procedural Relaxing Ambient BGM)
   // ==========================================================================
   const MusicManager = {
     ctx: null,
@@ -153,38 +156,40 @@
     
     init() {
       if (!this.ctx) {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
         this.gainNode = this.ctx.createGain();
         this.filterNode = this.ctx.createBiquadFilter();
         
         this.filterNode.type = 'lowpass';
-        this.filterNode.frequency.value = 300;
-        this.filterNode.Q.value = 1;
+        this.filterNode.frequency.value = 280;
+        this.filterNode.Q.value = 0.8;
         
         this.gainNode.gain.value = 0;
         this.filterNode.connect(this.gainNode);
         this.gainNode.connect(this.ctx.destination);
       }
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
     },
     
     setVolume(vol) {
-      if (!this.gainNode) return;
-      // map 0-100 to 0-0.15
-      const mappedVol = (vol / 100) * 0.15;
+      if (!this.gainNode || !this.ctx) return;
+      const mappedVol = (vol / 100) * 0.12;
       this.gainNode.gain.setTargetAtTime(mappedVol, this.ctx.currentTime, 0.1);
     },
     
     startMusic(isMenu = false) {
       this.init();
+      if (!this.ctx) return;
       if (this.isPlaying) this.stopMusic(true);
       this.isPlaying = true;
       
-      const freqs = [65.41, 65.41 * 1.5, 65.41 * 2]; // C2, G2, C3 roughly
+      const freqs = [65.41, 98.0, 130.81]; // Soft C-G ambient chords
       freqs.forEach((freq, i) => {
         const osc = this.ctx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.value = freq + (i * 0.5); // slight detune
+        osc.frequency.value = freq + (i * 0.4);
         osc.connect(this.filterNode);
         osc.start();
         this.oscillators.push(osc);
@@ -192,32 +197,26 @@
       
       this.lfo = this.ctx.createOscillator();
       this.lfo.type = 'sine';
-      this.lfo.frequency.value = 0.1; // 10 seconds per cycle
+      this.lfo.frequency.value = 0.08;
       
       const lfoGain = this.ctx.createGain();
-      lfoGain.gain.value = 100;
+      lfoGain.gain.value = 80;
       this.lfo.connect(lfoGain);
       lfoGain.connect(this.filterNode.frequency);
       this.lfo.start();
       
-      const targetVol = isMenu ? (SettingsManager.get('musicVolume') / 100) * 0.05 : (SettingsManager.get('musicVolume') / 100) * 0.15;
+      const volSetting = SettingsManager.get('musicVolume') || 25;
+      const targetVol = isMenu ? (volSetting / 100) * 0.04 : (volSetting / 100) * 0.12;
       this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + 2);
+      this.gainNode.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + 1.8);
     },
     
-    startMenuMusic() {
-      this.startMusic(true);
-    },
-    
-    startGameMusic() {
-      this.startMusic(false);
-    },
+    startMenuMusic() { this.startMusic(true); },
+    startGameMusic() { this.startMusic(false); },
     
     stopMusic(immediate = false) {
-      if (!this.isPlaying) return;
+      if (!this.isPlaying || !this.ctx || !this.gainNode) return;
       this.isPlaying = false;
-      
-      if (!this.gainNode) return;
       
       this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
       if (immediate) {
@@ -225,8 +224,8 @@
         this.cleanupOscillators();
       } else {
         this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, this.ctx.currentTime);
-        this.gainNode.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
-        setTimeout(() => this.cleanupOscillators(), 1000);
+        this.gainNode.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.8);
+        setTimeout(() => this.cleanupOscillators(), 850);
       }
     },
     
@@ -243,135 +242,71 @@
   };
 
   // ==========================================================================
-  // 4. AUDIO MANAGER (Enhanced)
+  // 4. AUDIO MANAGER (Procedural Sound FX with SFX Volume)
   // ==========================================================================
   const AudioManager = {
     ctx: null,
     init() {
       if (!this.ctx) {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
       }
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
-      }
-      MusicManager.init();
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
     },
-    getSfxVol() {
-      return SettingsManager.get('sfxVolume') / 100;
+    getSFXVolume() {
+      return (SettingsManager.get('sfxVolume') || 50) / 100;
     },
     playOscillator(type, freqStart, freqEnd, duration, volume = 0.1) {
       if (!this.ctx) return;
-      const sfxVol = this.getSfxVol();
-      if (sfxVol === 0) return;
+      const sfxVol = this.getSFXVolume();
+      if (sfxVol <= 0) return;
       
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freqStart, this.ctx.currentTime);
-      if (freqEnd) {
-        osc.frequency.exponentialRampToValueAtTime(freqEnd, this.ctx.currentTime + duration);
-      }
-      gain.gain.setValueAtTime(volume * sfxVol, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + duration);
+      try {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqStart, this.ctx.currentTime);
+        if (freqEnd) {
+          osc.frequency.exponentialRampToValueAtTime(freqEnd, this.ctx.currentTime + duration);
+        }
+        const effectiveVol = volume * sfxVol;
+        gain.gain.setValueAtTime(effectiveVol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+      } catch(e) {}
     },
-    playClick() { this.playOscillator('square', 800, null, 0.08, 0.05); },
-    playCrystal() { this.playOscillator('sine', 400, 800, 0.15, 0.1); },
-    playCollision() { this.playOscillator('sawtooth', 100, 50, 0.3, 0.2); },
-    playReverse() { 
-      if (!this.ctx) return;
-      const sfxVol = this.getSfxVol();
-      if (sfxVol === 0) return;
-      
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.15 * sfxVol, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.3);
-    },
-    playCountdown() { this.playOscillator('square', 600, null, 0.1, 0.1); },
+    playClick() { this.playOscillator('sine', 600, 900, 0.05, 0.08); },
+    playCrystal() { this.playOscillator('sine', 523, 1046, 0.16, 0.12); },
+    playCollision() { this.playOscillator('sawtooth', 120, 40, 0.3, 0.2); },
+    playReverse() { this.playOscillator('sine', 240, 680, 0.18, 0.12); },
+    playCountdown() { this.playOscillator('square', 500, null, 0.08, 0.08); },
+    playLaserWarning() { this.playOscillator('square', 880, 440, 0.1, 0.06); },
     playGameStart() {
-      if (!this.ctx) return;
-      const sfxVol = this.getSfxVol();
-      if (sfxVol === 0) return;
-      const playFreq = (f, t) => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'square';
-        osc.frequency.value = f;
-        gain.gain.setValueAtTime(0.1 * sfxVol, this.ctx.currentTime + t);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + t + 0.3);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(this.ctx.currentTime + t);
-        osc.stop(this.ctx.currentTime + t + 0.3);
-      };
-      playFreq(400, 0);
-      playFreq(500, 0.1);
-      playFreq(600, 0.2);
-    },
-    playGameOver() {
-      if (!this.ctx) return;
-      const sfxVol = this.getSfxVol();
-      if (sfxVol === 0) return;
-      
-      const t0 = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      
-      osc.frequency.setValueAtTime(400, t0);
-      osc.frequency.linearRampToValueAtTime(350, t0 + 0.3);
-      osc.frequency.linearRampToValueAtTime(350, t0 + 0.31);
-      osc.frequency.linearRampToValueAtTime(300, t0 + 0.6);
-      osc.frequency.linearRampToValueAtTime(300, t0 + 0.61);
-      osc.frequency.linearRampToValueAtTime(250, t0 + 0.9);
-      osc.frequency.linearRampToValueAtTime(250, t0 + 0.91);
-      osc.frequency.linearRampToValueAtTime(150, t0 + 1.2);
-      
-      gain.gain.setValueAtTime(0.15 * sfxVol, t0);
-      gain.gain.linearRampToValueAtTime(0, t0 + 1.2);
-      
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(t0 + 1.2);
-    },
-    playHighScore() {
-      if (!this.ctx) return;
-      const sfxVol = this.getSfxVol();
-      if (sfxVol === 0) return;
-      
-      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-      const t0 = this.ctx.currentTime;
-      
-      freqs.forEach((f, i) => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f;
-        
-        gain.gain.setValueAtTime(0, t0 + i*0.1);
-        gain.gain.linearRampToValueAtTime(0.15 * sfxVol, t0 + i*0.1 + 0.05);
-        gain.gain.linearRampToValueAtTime(0, t0 + i*0.1 + 0.2);
-        
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(t0 + i*0.1);
-        osc.stop(t0 + i*0.1 + 0.2);
+      if (!this.ctx || this.getSFXVolume() <= 0) return;
+      [400, 520, 650].forEach((f, i) => {
+        setTimeout(() => this.playOscillator('sine', f, f + 100, 0.12, 0.1), i * 80);
       });
     },
-    playLaserWarning() {
-      this.playOscillator('square', 900, null, 0.05, 0.05);
+    playGameOver() {
+      if (!this.ctx || this.getSFXVolume() <= 0) return;
+      // Funny descending trombone "wah-wah-wah-waaah"
+      const notes = [320, 300, 280, 240];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          this.playOscillator('sawtooth', freq, freq - 20, idx === 3 ? 0.45 : 0.18, 0.12);
+        }, idx * 180);
+      });
+    },
+    playHighScore() {
+      if (!this.ctx || this.getSFXVolume() <= 0) return;
+      // Cheerful ascending arpeggio
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((f, i) => {
+        setTimeout(() => this.playOscillator('sine', f, f + 50, 0.14, 0.12), i * 90);
+      });
     }
   };
 
@@ -385,13 +320,14 @@
       this.life = life; this.maxLife = life; this.color = color; this.size = size;
     }
   }
-  function spawnParticles(x, y, count, color, spread = 100) {
+  function spawnParticles(x, y, count, color, spread = 80) {
+    const maxP = DeviceManager.isAndroid() ? MOBILE_MAX_PARTICLES : MAX_PARTICLES;
     for (let i = 0; i < count; i++) {
-      if (particles.length >= (DeviceManager.isAndroid() ? MOBILE_MAX_PARTICLES : MAX_PARTICLES)) particles.shift();
+      if (particles.length >= maxP) particles.shift();
       const vx = (Math.random() - 0.5) * spread;
       const vy = (Math.random() - 0.5) * spread;
-      const life = 0.5 + Math.random() * 0.5;
-      const size = 2 + Math.random() * 3;
+      const life = 0.4 + Math.random() * 0.4;
+      const size = 1.5 + Math.random() * 2.5;
       particles.push(new Particle(x, y, vx, vy, life, color, size));
     }
   }
@@ -406,7 +342,7 @@
   }
   function renderParticles(ctx) {
     particles.forEach(p => {
-      ctx.globalAlpha = p.life / p.maxLife;
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -423,14 +359,13 @@
       this.x = x;
       this.y = y;
       this.radius = radius;
-      this.color = color;
+      this.color = color || '#00f3ff';
       this.restitution = restitution;
       this.vx = 0;
       this.vy = 0;
       this.trail = [];
       this.trailCounter = 0;
       this.isAlive = true;
-      this.invincibleTimer = 0;
       this.isGrounded = false;
     }
 
@@ -449,14 +384,16 @@
       this.trailCounter++;
       if (this.trailCounter % 2 === 0) {
         this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > (DeviceManager.isAndroid() ? MOBILE_TRAIL_LENGTH : TRAIL_MAX_LENGTH)) {
+        const maxTrail = DeviceManager.isAndroid() ? MOBILE_TRAIL_LENGTH : TRAIL_MAX_LENGTH;
+        if (this.trail.length > maxTrail) {
           this.trail.shift();
         }
       }
       
-      const bounceFriction = 0.995;
+      const bounceFriction = 0.992;
       this.isGrounded = false;
       
+      // Floor collision
       if (this.y + this.radius > height) {
         this.y = height - this.radius;
         this.vy = -this.vy * this.restitution;
@@ -467,6 +404,7 @@
         }
       }
       
+      // Ceiling collision
       if (this.y - this.radius < 0) {
         this.y = this.radius;
         this.vy = -this.vy * this.restitution;
@@ -477,32 +415,21 @@
         }
       }
       
+      // Left and right bounds
       if (this.x - this.radius < 0) {
         this.x = this.radius;
         this.vx = -this.vx * this.restitution;
       }
-      
       if (this.x + this.radius > width) {
         this.x = width - this.radius;
         this.vx = -this.vx * this.restitution;
-      }
-      
-      if (this.invincibleTimer > 0) {
-        this.invincibleTimer -= dt;
-      }
-      
-      if (this.y < -this.radius * 2 || this.y > height + this.radius * 2) {
-        GameManager.gameOver();
       }
     }
 
     draw(ctx) {
       if (!this.isAlive) return;
       
-      if (this.invincibleTimer > 0) {
-        if (Math.floor(this.invincibleTimer * 10) % 2 === 0) return;
-      }
-      
+      // Trail
       if (this.trail.length > 1) {
         ctx.beginPath();
         ctx.moveTo(this.trail[0].x, this.trail[0].y);
@@ -510,24 +437,22 @@
           ctx.lineTo(this.trail[i].x, this.trail[i].y);
         }
         ctx.strokeStyle = this.color;
-        ctx.globalAlpha = 0.25;
-        ctx.lineWidth = this.radius * 0.3;
+        ctx.globalAlpha = 0.22;
+        ctx.lineWidth = this.radius * 0.35;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.stroke();
-        
-        ctx.globalAlpha = 0.12;
-        ctx.lineWidth = this.radius * 0.8;
         ctx.stroke();
         ctx.globalAlpha = 1.0;
       }
       
+      // Outer aura ring
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius + 4, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      // Sphere body
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
       
@@ -541,50 +466,86 @@
       );
       
       grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.2, this.color);
+      grad.addColorStop(0.25, this.color);
       grad.addColorStop(0.85, darkenColor(this.color, 40));
       grad.addColorStop(1, darkenColor(this.color, 70));
       
       ctx.fillStyle = grad;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 10;
       ctx.shadowColor = this.color;
       ctx.fill();
       ctx.shadowBlur = 0;
-      
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-      ctx.stroke();
     }
   }
 
   // ==========================================================================
-  // 7. OBSTACLE SYSTEM
+  // 7. OBSTACLE SYSTEM (FAIR, CALM & CLEAR WARNINGS)
   // ==========================================================================
   let obstacles = [];
+  let lastLaserTime = -99999;
+  let safeSpawnGraceTimer = 0;
+
   class Obstacle {
-    constructor(x, y, width, height, speed, type) {
-      this.x = x; this.y = y; this.width = width; this.height = height;
-      this.speed = speed; this.type = type;
-      this.warningTimer = type === 'laser' ? 1.2 : 0;
-      this.active = type !== 'laser';
+    constructor(x, y, width, height, speed, type, onFloor = true) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.speed = speed;
+      this.type = type;
+      this.onFloor = onFloor;
+      this.warningTimer = (type === 'laser') ? 1.8 : 0; // 1.8s laser warning
+      this.active = (type !== 'laser');
       this.warningPlayed = false;
     }
   }
+
   function spawnObstacle(canvasWidth, canvasHeight, multiplier) {
-    const types = ['spike', 'block', 'laser'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const speed = OBSTACLE_BASE_SPEED * multiplier;
-    let y = Math.random() * (canvasHeight - 100) + 50;
+    if (safeSpawnGraceTimer > 0) return;
+
+    const now = performance.now();
+    const timeSurvived = GameManager.difficultyTimer;
+
+    // Laser spawning rule:
+    // Only allowed after 35 seconds of survival, with minimum 16s cooldown between lasers
+    const canSpawnLaser = (timeSurvived >= 35) && (now - lastLaserTime > 16000);
     
-    if (type === 'laser') {
-      obstacles.push(new Obstacle(0, y, canvasWidth, 10, 0, 'laser'));
+    let type;
+    if (canSpawnLaser && Math.random() < 0.26) {
+      type = 'laser';
+      lastLaserTime = now;
+      safeSpawnGraceTimer = 2.4; // Grace delay on regular obstacles while laser is preparing/firing
     } else {
-      let width = type === 'spike' ? 30 : 40 + Math.random() * 40;
-      let height = type === 'spike' ? 40 : 40 + Math.random() * 40;
-      obstacles.push(new Obstacle(canvasWidth + 50, y, width, height, speed, type));
+      type = (Math.random() < 0.55) ? 'spike' : 'block';
+    }
+
+    const speed = OBSTACLE_BASE_SPEED * multiplier;
+
+    if (type === 'laser') {
+      const y = 50 + Math.random() * (canvasHeight - 110);
+      obstacles.push(new Obstacle(0, y, canvasWidth, 12, 0, 'laser'));
+    } else if (type === 'spike') {
+      const onFloor = Math.random() < 0.55;
+      const spikeHeight = 32;
+      const spikeWidth = 26;
+      const y = onFloor ? (canvasHeight - spikeHeight) : 0;
+      obstacles.push(new Obstacle(canvasWidth + 15, y, spikeWidth, spikeHeight, speed, 'spike', onFloor));
+    } else if (type === 'block') {
+      const loc = Math.random();
+      const blockH = 32;
+      const blockW = 32;
+      let y;
+      if (loc < 0.45) y = canvasHeight - blockH; // floor
+      else if (loc < 0.85) y = 0; // ceiling
+      else y = canvasHeight / 2 - blockH / 2; // mid lane
+      obstacles.push(new Obstacle(canvasWidth + 15, y, blockW, blockH, speed, 'block'));
     }
   }
+
   function updateObstacles(dt) {
+    if (safeSpawnGraceTimer > 0) {
+      safeSpawnGraceTimer -= dt;
+    }
     for (let i = obstacles.length - 1; i >= 0; i--) {
       let obs = obstacles[i];
       if (obs.type === 'laser') {
@@ -597,24 +558,25 @@
           if (obs.warningTimer <= 0) obs.active = true;
         } else {
           obs.warningTimer -= dt;
-          if (obs.warningTimer < -1.5) obstacles.splice(i, 1);
+          if (obs.warningTimer < -1.1) obstacles.splice(i, 1);
         }
       } else {
         obs.x -= obs.speed * dt;
-        if (obs.x + obs.width < -50) obstacles.splice(i, 1);
+        if (obs.x + obs.width < -40) obstacles.splice(i, 1);
       }
     }
   }
-  function renderObstacles(ctx) {
-    const width = GameManager.canvas.width;
+
+  function renderObstacles(ctx, width) {
     obstacles.forEach(obs => {
       if (obs.type === 'laser') {
         if (obs.warningTimer > 0) {
-          if (Math.floor(obs.warningTimer * 6) % 2 === 0) {
+          // Blinking warning indicator with glow and directional arrows
+          if (Math.floor(obs.warningTimer * 5) % 2 === 0) {
             ctx.strokeStyle = '#ff007c';
-            ctx.setLineDash([10, 10]);
+            ctx.setLineDash([8, 8]);
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = 10;
             ctx.shadowColor = '#ff007c';
             ctx.beginPath();
             ctx.moveTo(0, obs.y + obs.height/2);
@@ -623,49 +585,56 @@
             ctx.setLineDash([]);
             ctx.shadowBlur = 0;
             
-            // Draw small arrows at edges
+            // Left & Right warning arrows
             ctx.fillStyle = '#ff007c';
             ctx.beginPath();
             ctx.moveTo(0, obs.y);
-            ctx.lineTo(10, obs.y + obs.height/2);
+            ctx.lineTo(12, obs.y + obs.height/2);
             ctx.lineTo(0, obs.y + obs.height);
             ctx.fill();
             
             ctx.beginPath();
             ctx.moveTo(width, obs.y);
-            ctx.lineTo(width - 10, obs.y + obs.height/2);
+            ctx.lineTo(width - 12, obs.y + obs.height/2);
             ctx.lineTo(width, obs.y + obs.height);
             ctx.fill();
           }
         } else if (obs.active) {
+          // Lethal active laser beam
           ctx.fillStyle = '#ff007c';
-          ctx.shadowBlur = 15;
+          ctx.shadowBlur = 16;
           ctx.shadowColor = '#ff007c';
-          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+          ctx.fillRect(0, obs.y, width, obs.height);
           ctx.shadowBlur = 0;
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(obs.x, obs.y + 3, obs.width, 4);
+          ctx.fillRect(0, obs.y + 3, width, obs.height - 6);
         }
       } else if (obs.type === 'spike') {
         ctx.fillStyle = '#ff007c';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = '#ff007c';
         ctx.beginPath();
-        ctx.moveTo(obs.x, obs.y + obs.height/2);
-        ctx.lineTo(obs.x + obs.width, obs.y);
-        ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+        if (obs.onFloor) {
+          ctx.moveTo(obs.x, obs.y + obs.height);
+          ctx.lineTo(obs.x + obs.width / 2, obs.y);
+          ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+        } else {
+          ctx.moveTo(obs.x, obs.y);
+          ctx.lineTo(obs.x + obs.width / 2, obs.y + obs.height);
+          ctx.lineTo(obs.x + obs.width, obs.y);
+        }
         ctx.closePath();
         ctx.fill();
         ctx.shadowBlur = 0;
       } else if (obs.type === 'block') {
         const grad = ctx.createLinearGradient(obs.x, obs.y, obs.x, obs.y + obs.height);
         grad.addColorStop(0, '#ff007c');
-        grad.addColorStop(1, '#aa0055');
+        grad.addColorStop(1, '#990044');
         ctx.fillStyle = grad;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = '#ff007c';
         ctx.beginPath();
-        ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 8);
+        ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 6);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -686,7 +655,7 @@
   function spawnCrystal(width, height) {
     if (crystals.length >= 3) return;
     const x = 50 + Math.random() * (width - 100);
-    const y = 50 + Math.random() * (height - 100);
+    const y = 40 + Math.random() * (height - 80);
     crystals.push(new Crystal(x, y));
   }
   function updateCrystals(dt) {
@@ -699,14 +668,14 @@
   function renderCrystals(ctx) {
     crystals.forEach(c => {
       const glow = Math.abs(Math.sin(c.glowPhase));
-      const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.radius + 5 + glow * 5);
-      grad.addColorStop(0, 'rgba(0, 243, 255, 1)');
-      grad.addColorStop(0.5, 'rgba(0, 243, 255, 0.5)');
+      const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.radius + 4 + glow * 4);
+      grad.addColorStop(0, 'rgba(0, 243, 255, 0.95)');
+      grad.addColorStop(0.5, 'rgba(0, 243, 255, 0.45)');
       grad.addColorStop(1, 'rgba(0, 243, 255, 0)');
       
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(c.x, c.y, c.radius + 5 + glow * 5, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, c.radius + 4 + glow * 4, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.fillStyle = '#ffffff';
@@ -766,14 +735,13 @@
   };
 
   // ==========================================================================
-  // 10. SPACE RENDERER
+  // 10. SPACE RENDERER (Animated Living Space Scene)
   // ==========================================================================
   const SpaceRenderer = {
     stars: [],
     nebulae: [],
     planets: [],
     shootingStars: [],
-    dustParticles: [],
     theme: THEMES['deep-space'],
 
     init(width, height) {
@@ -781,218 +749,161 @@
       this.nebulae = [];
       this.planets = [];
       this.shootingStars = [];
-      this.dustParticles = [];
       
-      const starCount = DeviceManager.isAndroid() ? 120 : 200;
+      const starCount = DeviceManager.isAndroid() ? 70 : 120;
       for (let i = 0; i < starCount; i++) {
         this.stars.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          size: 0.5 + Math.random() * 2,
-          speed: 5 + Math.random() * 20,
+          size: 0.6 + Math.random() * 1.8,
+          speed: 4 + Math.random() * 14,
           twinklePhase: Math.random() * Math.PI * 2,
-          twinkleSpeed: 1 + Math.random() * 3,
-          layer: Math.floor(Math.random() * 3)
+          twinkleSpeed: 1 + Math.random() * 2
         });
       }
       
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         this.nebulae.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          radius: 100 + Math.random() * 150,
-          colorIndex: Math.floor(Math.random() * 3) + 1,
-          driftVx: (Math.random() - 0.5) * 5,
-          driftVy: (Math.random() - 0.5) * 5
+          radius: 90 + Math.random() * 120,
+          colorIdx: i % 3,
+          driftVx: (Math.random() - 0.5) * 2,
+          driftVy: (Math.random() - 0.5) * 2
         });
       }
       
       this.planets.push({
-        x: width * 0.1, y: height * 0.2, radius: 25, colorKey: 'planet1', orbitSpeed: 0.05, angle: 0
+        x: width * 0.82,
+        y: height * 0.28,
+        radius: 22,
+        color: this.theme.planet1
       });
-      this.planets.push({
-        x: width * 0.85, y: height * 0.7, radius: 40, colorKey: 'planet2', orbitSpeed: 0.03, angle: Math.PI
-      });
-      
-      for (let i = 0; i < 15; i++) {
-        this.dustParticles.push({
-          x: Math.random() * width, y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
-          size: 1 + Math.random() * 1.5, alpha: Math.random() * 0.5
-        });
-      }
     },
 
     setTheme(themeName) {
       this.theme = THEMES[themeName] || THEMES['deep-space'];
+      if (this.planets.length > 0) this.planets[0].color = this.theme.planet1;
     },
 
     update(dt, width, height) {
       this.stars.forEach(star => {
-        star.x -= star.speed * (star.layer * 0.5 + 0.5) * dt;
+        star.x -= star.speed * dt;
         if (star.x < 0) {
           star.x = width;
           star.y = Math.random() * height;
         }
         star.twinklePhase += star.twinkleSpeed * dt;
       });
-      
-      this.nebulae.forEach(nebula => {
-        nebula.x += nebula.driftVx * dt;
-        nebula.y += nebula.driftVy * dt;
-        if (nebula.x < -nebula.radius) nebula.x = width + nebula.radius;
-        if (nebula.x > width + nebula.radius) nebula.x = -nebula.radius;
-        if (nebula.y < -nebula.radius) nebula.y = height + nebula.radius;
-        if (nebula.y > height + nebula.radius) nebula.y = -nebula.radius;
+
+      this.nebulae.forEach(neb => {
+        neb.x += neb.driftVx * dt;
+        neb.y += neb.driftVy * dt;
+        if (neb.x < -neb.radius) neb.x = width + neb.radius;
+        if (neb.x > width + neb.radius) neb.x = -neb.radius;
       });
-      
-      this.planets.forEach(planet => {
-        planet.angle += planet.orbitSpeed * dt;
-      });
-      
-      for (let i = this.shootingStars.length - 1; i >= 0; i--) {
-        let ss = this.shootingStars[i];
-        ss.x += ss.vx * dt;
-        ss.y += ss.vy * dt;
-        ss.life -= dt;
-        if (ss.life <= 0) this.shootingStars.splice(i, 1);
-      }
-      
-      if (Math.random() < dt * 0.2) {
+
+      // Random shooting stars
+      if (Math.random() < 0.008 && this.shootingStars.length < 2) {
         this.shootingStars.push({
-          x: Math.random() * width * 1.5,
-          y: -50,
-          vx: -200 - Math.random() * 300,
-          vy: 200 + Math.random() * 300,
-          life: 1.5,
-          maxLife: 1.5,
-          length: 50 + Math.random() * 100
+          x: Math.random() * width,
+          y: Math.random() * (height * 0.4),
+          vx: -180 - Math.random() * 120,
+          vy: 80 + Math.random() * 60,
+          life: 0.8,
+          maxLife: 0.8,
+          length: 40 + Math.random() * 30
         });
       }
-      
-      this.dustParticles.forEach(dust => {
-        dust.x += dust.vx * dt;
-        dust.y += dust.vy * dt;
-        if (dust.x < 0) dust.x = width;
-        if (dust.x > width) dust.x = 0;
-        if (dust.y < 0) dust.y = height;
-        if (dust.y > height) dust.y = 0;
-      });
+
+      for (let i = this.shootingStars.length - 1; i >= 0; i--) {
+        let s = this.shootingStars[i];
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.life -= dt;
+        if (s.life <= 0) this.shootingStars.splice(i, 1);
+      }
     },
 
     render(ctx, width, height) {
       ctx.fillStyle = this.theme.bg;
       ctx.fillRect(0, 0, width, height);
-      
-      this.nebulae.forEach(nebula => {
-        const grad = ctx.createRadialGradient(nebula.x, nebula.y, 0, nebula.x, nebula.y, nebula.radius);
-        grad.addColorStop(0, this.theme[`nebula${nebula.colorIndex}`]);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+      // Nebulae
+      this.nebulae.forEach(neb => {
+        const color = neb.colorIdx === 0 ? this.theme.nebula1 : (neb.colorIdx === 1 ? this.theme.nebula2 : this.theme.nebula3);
+        const grad = ctx.createRadialGradient(neb.x, neb.y, 0, neb.x, neb.y, neb.radius);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(nebula.x, nebula.y, nebula.radius, 0, Math.PI * 2);
+        ctx.arc(neb.x, neb.y, neb.radius, 0, Math.PI * 2);
         ctx.fill();
       });
-      
+
+      // Planet
+      this.planets.forEach(p => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = p.color;
+        ctx.globalAlpha = 0.65;
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Stars
       this.stars.forEach(star => {
+        const alpha = 0.35 + 0.65 * Math.abs(Math.sin(star.twinklePhase));
         ctx.fillStyle = this.theme.stars;
-        ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(star.twinklePhase));
+        ctx.globalAlpha = alpha;
         ctx.fillRect(star.x, star.y, star.size, star.size);
       });
       ctx.globalAlpha = 1.0;
-      
-      this.planets.forEach(planet => {
-        const dx = Math.cos(planet.angle) * 10;
-        const dy = Math.sin(planet.angle) * 10;
-        
-        const grad = ctx.createRadialGradient(planet.x + dx - planet.radius*0.3, planet.y + dy - planet.radius*0.3, planet.radius*0.1, planet.x + dx, planet.y + dy, planet.radius);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.2, this.theme[planet.colorKey]);
-        grad.addColorStop(1, darkenColor(this.theme[planet.colorKey], 60));
-        
-        ctx.fillStyle = grad;
+
+      // Shooting stars
+      this.shootingStars.forEach(s => {
+        const alpha = Math.max(0, s.life / s.maxLife);
+        ctx.strokeStyle = this.theme.shootingStar;
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(planet.x + dx, planet.y + dy, planet.radius, 0, Math.PI*2);
-        ctx.fill();
-      });
-      
-      this.shootingStars.forEach(ss => {
-        ctx.globalAlpha = ss.life / ss.maxLife;
-        const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - (ss.vx/Math.abs(ss.vx))*ss.length, ss.y - (ss.vy/Math.abs(ss.vy))*ss.length);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.3, this.theme.shootingStar);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(ss.x, ss.y);
-        ctx.lineTo(ss.x - (ss.vx/Math.abs(ss.vx))*ss.length, ss.y - (ss.vy/Math.abs(ss.vy))*ss.length);
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(s.x - (s.vx / 180) * s.length, s.y - (s.vy / 180) * s.length);
         ctx.stroke();
-      });
-      ctx.globalAlpha = 1.0;
-      
-      this.dustParticles.forEach(dust => {
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = dust.alpha;
-        ctx.fillRect(dust.x, dust.y, dust.size, dust.size);
       });
       ctx.globalAlpha = 1.0;
     },
 
     renderGameplay(ctx, width, height, player, dt) {
       this.render(ctx, width, height);
-      
+
+      // Subtle dynamic warped grid
       const gridSpacing = 40;
       ctx.strokeStyle = this.theme.grid;
       ctx.lineWidth = 1;
       
       for (let y = 0; y < height; y += gridSpacing) {
         ctx.beginPath();
-        for (let x = 0; x < width; x += 10) {
-          let displayX = x;
-          let displayY = y;
-          
+        for (let x = 0; x < width; x += 15) {
+          let dx = x, dy = y;
           if (player) {
-            const dx = player.x - x;
-            const dy = player.y - y;
-            const dist2 = dx * dx + dy * dy;
-            const warpRadius = player.radius * 3.5;
-            if (dist2 < warpRadius * warpRadius) {
-              const dist = Math.sqrt(dist2);
-              const force = (warpRadius - dist) / warpRadius;
-              const displacement = force * (player.radius * 0.28);
-              displayX += (dx / (dist || 1)) * displacement;
-              displayY += (dy / (dist || 1)) * displacement;
+            const diffX = player.x - x;
+            const diffY = player.y - y;
+            const distSq = diffX * diffX + diffY * diffY;
+            const warpR = player.radius * 3.2;
+            if (distSq < warpR * warpR) {
+              const dist = Math.sqrt(distSq);
+              const force = (warpR - dist) / warpR;
+              const disp = force * (player.radius * 0.22);
+              dx += (diffX / (dist || 1)) * disp;
+              dy += (diffY / (dist || 1)) * disp;
             }
           }
-          if (x === 0) ctx.moveTo(displayX, displayY);
-          else ctx.lineTo(displayX, displayY);
-        }
-        ctx.stroke();
-      }
-      
-      for (let x = 0; x < width; x += gridSpacing) {
-        ctx.beginPath();
-        for (let y = 0; y < height; y += 10) {
-          let displayX = x;
-          let displayY = y;
-          
-          if (player) {
-            const dx = player.x - x;
-            const dy = player.y - y;
-            const dist2 = dx * dx + dy * dy;
-            const warpRadius = player.radius * 3.5;
-            if (dist2 < warpRadius * warpRadius) {
-              const dist = Math.sqrt(dist2);
-              const force = (warpRadius - dist) / warpRadius;
-              const displacement = force * (player.radius * 0.28);
-              displayX += (dx / (dist || 1)) * displacement;
-              displayY += (dy / (dist || 1)) * displacement;
-            }
-          }
-          if (y === 0) ctx.moveTo(displayX, displayY);
-          else ctx.lineTo(displayX, displayY);
+          if (x === 0) ctx.moveTo(dx, dy);
+          else ctx.lineTo(dx, dy);
         }
         ctx.stroke();
       }
@@ -1021,6 +932,8 @@
       gravityLabel: document.getElementById('gravity-label'),
       gravityArrow: document.getElementById('gravity-arrow'),
       hudFps: document.getElementById('hud-fps'),
+      gravityNotification: document.getElementById('gravity-notification'),
+      gravityNotifText: document.getElementById('gravity-notif-text'),
       countdownNum: document.getElementById('countdown-number'),
       goScore: document.getElementById('gameover-score'),
       goHighScore: document.getElementById('gameover-highscore'),
@@ -1028,8 +941,6 @@
       goFact: document.getElementById('gameover-fact-text'),
       goNewHs: document.getElementById('gameover-new-hs'),
       scorePopups: document.getElementById('score-popups'),
-      gravityNotification: document.getElementById('gravity-notification'),
-      gravityNotifText: document.getElementById('gravity-notif-text'),
       menuFactText: document.getElementById('menu-fact-text'),
       menuShahriarFact: document.getElementById('menu-shahriar-fact'),
       settingsMusicVolume: document.getElementById('settings-music-volume'),
@@ -1039,14 +950,14 @@
       settingsBallColor: document.getElementById('settings-ball-color'),
       colorPreview: document.getElementById('color-preview'),
       themeGrid: document.getElementById('theme-grid'),
-      highscoresList: document.getElementById('screen-highscores').querySelector('.highscores-list') || document.getElementById('screen-highscores'),
+      highscoresList: document.getElementById('highscores-list'),
       appHeader: document.getElementById('app-header')
     },
     notifTimeout: null,
-    
+
     hideAllScreens() {
       Object.values(this.screens).forEach(el => {
-        if(el) el.classList.add('hidden');
+        if (el) el.classList.add('hidden');
       });
       stopMenuAnimation();
     },
@@ -1054,48 +965,45 @@
       this.hideAllScreens();
       if (this.screens[id]) {
         this.screens[id].classList.remove('hidden');
-      }
-      if (id === 'menu' || id === 'settings' || id === 'highscores' || id === 'instructions') {
-        startMenuAnimation();
+        if (id === 'menu') startMenuAnimation();
       }
     },
     updateScore(score) {
-      this.els.headerScore.textContent = score;
+      if (this.els.headerScore) this.els.headerScore.textContent = score;
       if (this.els.hudScore) this.els.hudScore.textContent = score;
     },
     updateHighScore(hs) {
-      this.els.headerHighScore.textContent = hs;
+      if (this.els.headerHighScore) this.els.headerHighScore.textContent = hs;
       if (this.els.hudHighScore) this.els.hudHighScore.textContent = hs;
     },
     updateGravityIndicator(g, modeName) {
-      if (this.els.gravityLabel) {
-        this.els.gravityLabel.textContent = modeName || `${Math.abs(g).toFixed(1)} m/s²`;
-      }
-      if (this.els.gravityArrow) {
-        this.els.gravityArrow.style.transform = g > 0 ? 'rotate(0deg)' : 'rotate(180deg)';
-        const currentMode = GRAVITY_MODES.find(m => Math.abs(m.value - g) < 0.1);
-        this.els.gravityArrow.style.color = currentMode ? currentMode.color : (g > 0 ? 'var(--neon-cyan)' : 'var(--neon-pink)');
-      }
+      if (!this.els.gravityLabel || !this.els.gravityArrow) return;
+      this.els.gravityLabel.textContent = `${Math.abs(g).toFixed(1)} m/s²`;
+      this.els.gravityArrow.style.transform = g > 0 ? 'rotate(0deg)' : 'rotate(180deg)';
+      const currentMode = GRAVITY_MODES.find(m => Math.abs(m.value - g) < 0.1);
+      this.els.gravityArrow.style.color = currentMode ? currentMode.color : (g > 0 ? 'var(--neon-cyan)' : 'var(--neon-pink)');
     },
     showGravityNotification(text) {
-      if (!this.els.gravityNotification) return;
+      if (!this.els.gravityNotification || !this.els.gravityNotifText) return;
       this.els.gravityNotifText.textContent = text;
       this.els.gravityNotification.classList.add('show');
       if (this.notifTimeout) clearTimeout(this.notifTimeout);
       this.notifTimeout = setTimeout(() => {
         this.els.gravityNotification.classList.remove('show');
-      }, 2500);
+      }, 2200);
     },
     updateFPS(fps) {
       if (this.els.hudFps) this.els.hudFps.textContent = fps;
     },
     showGameOver(score, hs, time, isNew) {
-      if(this.els.goScore) this.els.goScore.textContent = score;
-      if(this.els.goHighScore) this.els.goHighScore.textContent = hs;
-      if(this.els.goTime) this.els.goTime.textContent = `${Math.floor(time)}s`;
-      if(this.els.goFact) this.els.goFact.textContent = ScoreManager.getRandomFact();
+      if (this.els.goScore) this.els.goScore.textContent = score;
+      if (this.els.goHighScore) this.els.goHighScore.textContent = hs;
+      if (this.els.goTime) this.els.goTime.textContent = `${Math.floor(time)}s`;
+      if (this.els.goFact) this.els.goFact.textContent = ScoreManager.getRandomFact();
+      
       if (isNew && this.els.goNewHs) this.els.goNewHs.classList.remove('hidden');
       else if (this.els.goNewHs) this.els.goNewHs.classList.add('hidden');
+      
       this.showScreen('gameover');
       drawFunnyFace();
       if (isNew) AudioManager.playHighScore();
@@ -1106,7 +1014,7 @@
       this.els.countdownNum.textContent = num;
       this.els.countdownNum.style.animation = 'none';
       void this.els.countdownNum.offsetWidth;
-      this.els.countdownNum.style.animation = 'pulse 1s infinite';
+      this.els.countdownNum.style.animation = 'countdownPulse 0.8s ease-out forwards';
     },
     spawnScorePopup(x, y, text) {
       if (!this.els.scorePopups) return;
@@ -1116,17 +1024,20 @@
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
       this.els.scorePopups.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
+      setTimeout(() => el.remove(), 900);
     },
     triggerScreenShake() {
-      document.body.classList.add('shake');
-      setTimeout(() => document.body.classList.remove('shake'), 300);
+      const vp = document.querySelector('.game-viewport');
+      if (vp) {
+        vp.classList.add('shake');
+        setTimeout(() => vp.classList.remove('shake'), 300);
+      }
     },
     populateHighScores() {
-      const container = this.screens.highscores.querySelector('.highscores-list');
+      const container = this.els.highscoresList;
       if (!container) return;
       container.innerHTML = '';
-      const scores = SettingsManager.get('highScores');
+      const scores = SettingsManager.get('highScores') || [];
       if (scores.length === 0) {
         container.innerHTML = '<div class="highscore-empty">No high scores yet!</div>';
         return;
@@ -1144,27 +1055,26 @@
     },
     updateSettingsUI() {
       if (this.els.settingsMusicVolume) {
-        this.els.settingsMusicVolume.value = SettingsManager.get('musicVolume');
-        if (this.els.settingsMusicValue) this.els.settingsMusicValue.textContent = this.els.settingsMusicVolume.value;
+        const mVol = SettingsManager.get('musicVolume') || 25;
+        this.els.settingsMusicVolume.value = mVol;
+        if (this.els.settingsMusicValue) this.els.settingsMusicValue.textContent = `${mVol}%`;
       }
       if (this.els.settingsSfxVolume) {
-        this.els.settingsSfxVolume.value = SettingsManager.get('sfxVolume');
-        if (this.els.settingsSfxValue) this.els.settingsSfxValue.textContent = this.els.settingsSfxVolume.value;
+        const sVol = SettingsManager.get('sfxVolume') || 50;
+        this.els.settingsSfxVolume.value = sVol;
+        if (this.els.settingsSfxValue) this.els.settingsSfxValue.textContent = `${sVol}%`;
       }
       if (this.els.settingsBallColor) {
-        this.els.settingsBallColor.value = SettingsManager.get('ballColor');
-        if (this.els.colorPreview) this.els.colorPreview.style.backgroundColor = SettingsManager.get('ballColor');
+        const bColor = SettingsManager.get('ballColor') || '#00f3ff';
+        this.els.settingsBallColor.value = bColor;
+        if (this.els.colorPreview) this.els.colorPreview.style.backgroundColor = bColor;
       }
-      
       if (this.els.themeGrid) {
         const themeBtns = this.els.themeGrid.querySelectorAll('.theme-option');
-        const currentTheme = SettingsManager.get('theme');
+        const currentTheme = SettingsManager.get('theme') || 'deep-space';
         themeBtns.forEach(btn => {
-          if (btn.dataset.theme === currentTheme) {
-            btn.classList.add('active');
-          } else {
-            btn.classList.remove('active');
-          }
+          if (btn.dataset.theme === currentTheme) btn.classList.add('active');
+          else btn.classList.remove('active');
         });
       }
     },
@@ -1180,16 +1090,17 @@
   };
 
   // ==========================================================================
-  // 12. FUNNY FACE RENDERER
+  // 12. FUNNY FACE RENDERER (Humorous Cartoon Face with Missing Tooth)
   // ==========================================================================
   function drawFunnyFace() {
     const canvas = document.getElementById('gameover-face-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
-    const cx = w/2, cy = h/2, r = w * 0.4;
+    const cx = w/2, cy = h/2, r = w * 0.42;
     ctx.clearRect(0, 0, w, h);
 
+    // Yellow face
     const faceGrad = ctx.createRadialGradient(cx-r*0.2, cy-r*0.2, r*0.1, cx, cy, r);
     faceGrad.addColorStop(0, '#ffe066');
     faceGrad.addColorStop(1, '#ffcc00');
@@ -1201,88 +1112,71 @@
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(cx - r*0.3, cy - r*0.15, r*0.18, r*0.22, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle = '#cc8800';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.arc(cx - r*0.22, cy - r*0.12, r*0.08, 0, Math.PI*2);
-    ctx.fill();
-    
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(cx - r*0.25, cy - r*0.17, r*0.03, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(cx + r*0.3, cy - r*0.15, r*0.18, r*0.22, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle = '#cc8800';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath();
-    ctx.arc(cx + r*0.38, cy - r*0.12, r*0.08, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(cx + r*0.35, cy - r*0.17, r*0.03, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#8B4513';
+    // Eyes (Laughing crescent shapes)
+    ctx.strokeStyle = '#664400';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
+    
+    // Left eye arc
     ctx.beginPath();
-    ctx.moveTo(cx - r*0.5, cy - r*0.4);
-    ctx.quadraticCurveTo(cx - r*0.3, cy - r*0.55, cx - r*0.1, cy - r*0.38);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(cx + r*0.5, cy - r*0.4);
-    ctx.quadraticCurveTo(cx + r*0.3, cy - r*0.55, cx + r*0.1, cy - r*0.38);
+    ctx.arc(cx - r*0.35, cy - r*0.1, r*0.18, Math.PI * 1.1, Math.PI * 1.9);
     ctx.stroke();
 
+    // Right eye arc
+    ctx.beginPath();
+    ctx.arc(cx + r*0.35, cy - r*0.1, r*0.18, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.stroke();
+
+    // Eyebrows
+    ctx.beginPath();
+    ctx.moveTo(cx - r*0.5, cy - r*0.35);
+    ctx.quadraticCurveTo(cx - r*0.35, cy - r*0.48, cx - r*0.18, cy - r*0.32);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(cx + r*0.5, cy - r*0.35);
+    ctx.quadraticCurveTo(cx + r*0.35, cy - r*0.48, cx + r*0.18, cy - r*0.32);
+    ctx.stroke();
+
+    // Huge laughing mouth
     ctx.fillStyle = '#8B0000';
     ctx.beginPath();
-    ctx.ellipse(cx, cy + r*0.3, r*0.45, r*0.3, 0, 0, Math.PI);
+    ctx.arc(cx, cy + r*0.1, r*0.55, 0.1 * Math.PI, 0.9 * Math.PI, false);
+    ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = '#660000';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = '#fff';
-    const teethY = cy + r*0.3;
-    const toothW = r*0.12;
-    const toothH = r*0.12;
-    const teethStart = cx - r*0.35;
-    for (let i = 0; i < 6; i++) {
-      if (i === 2) continue;
-      const tx = teethStart + i * (toothW + 2);
-      ctx.beginPath();
-      ctx.roundRect(tx, teethY - toothH*0.2, toothW, toothH, 2);
-      ctx.fill();
-    }
+    // Teeth row with missing tooth!
+    ctx.fillStyle = '#ffffff';
+    const teethY = cy + r*0.12;
+    const toothW = r * 0.18;
+    const toothH = r * 0.16;
     
-    ctx.fillStyle = '#4a0000';
-    const gapX = teethStart + 2 * (toothW + 2);
-    ctx.fillRect(gapX, teethY - toothH*0.2, toothW, toothH);
+    // Left tooth
+    ctx.beginPath();
+    ctx.roundRect(cx - toothW * 1.1, teethY, toothW, toothH, 2);
+    ctx.fill();
 
+    // Right side: Missing tooth gap (dark background), then another tooth
+    ctx.beginPath();
+    ctx.roundRect(cx + toothW * 0.5, teethY, toothW, toothH, 2);
+    ctx.fill();
+
+    // Tongue
     ctx.fillStyle = '#ff6b6b';
     ctx.beginPath();
-    ctx.ellipse(cx + r*0.05, cy + r*0.5, r*0.15, r*0.1, 0, 0, Math.PI);
+    ctx.arc(cx, cy + r*0.48, r*0.2, 0, Math.PI, false);
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255, 100, 100, 0.3)';
+    // Cheeks
+    ctx.fillStyle = 'rgba(255, 90, 90, 0.35)';
     ctx.beginPath();
-    ctx.arc(cx - r*0.55, cy + r*0.1, r*0.12, 0, Math.PI*2);
+    ctx.arc(cx - r*0.55, cy + r*0.12, r*0.12, 0, Math.PI*2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx + r*0.55, cy + r*0.1, r*0.12, 0, Math.PI*2);
+    ctx.arc(cx + r*0.55, cy + r*0.12, r*0.12, 0, Math.PI*2);
     ctx.fill();
   }
 
@@ -1323,10 +1217,13 @@
         const mode = GRAVITY_MODES[newIndex];
         GameManager.gravity = mode.value;
         UIManager.updateGravityIndicator(mode.value, mode.name);
-        UIManager.showGravityNotification(`${mode.name} Activated`);
+        UIManager.showGravityNotification(`${mode.name.toUpperCase()} ACTIVATED`);
         AudioManager.playReverse();
+        
+        safeSpawnGraceTimer = 2.0; // Grace period right after shift!
+
         if (GameManager.player) {
-          spawnParticles(GameManager.player.x, GameManager.player.y, 20, mode.color, 60);
+          spawnParticles(GameManager.player.x, GameManager.player.y, 16, mode.color, 50);
         }
 
         this.timer = 0;
@@ -1367,7 +1264,7 @@
   };
 
   // ==========================================================================
-  // 15. GAME MANAGER
+  // 15. GAME MANAGER (State Machine & Main Game Loop)
   // ==========================================================================
   const GameManager = {
     state: 'DEVICE_SELECT',
@@ -1378,6 +1275,8 @@
     gravity: DEFAULT_GRAVITY,
     canvas: document.getElementById('game-canvas'),
     ctx: null,
+    logicalWidth: 920,
+    logicalHeight: 480,
     
     init() {
       this.ctx = this.canvas.getContext('2d');
@@ -1391,18 +1290,21 @@
         this.returnToMenu();
       }
     },
+    
     startGame() {
       this.state = 'COUNTDOWN';
       UIManager.showScreen('countdown');
       ScoreManager.reset();
       
-      const ballColor = SettingsManager.get('ballColor');
-      this.player = new Player(this.canvas.width/4, this.canvas.height/2, PLAYER_RADIUS, ballColor, PLAYER_RESTITUTION);
+      const ballColor = SettingsManager.get('ballColor') || '#00f3ff';
+      this.player = new Player(this.logicalWidth * 0.25, this.logicalHeight * 0.5, PLAYER_RADIUS, ballColor, PLAYER_RESTITUTION);
       DynamicGravity.reset();
       
       obstacles = [];
       crystals = [];
       particles = [];
+      lastLaserTime = -99999;
+      safeSpawnGraceTimer = 1.0;
       this.difficultyTimer = 0;
       this.obstacleSpawnTimer = 0;
       this.crystalSpawnTimer = 0;
@@ -1421,95 +1323,124 @@
           this.state = 'PLAYING';
           UIManager.hideAllScreens();
           if (DeviceManager.isAndroid()) {
-            mobileReverseBtn.style.display = 'flex';
-            mobilePauseBtn.style.display = 'flex';
+            const revBtn = document.getElementById('btn-reverse-gravity');
+            const pBtn = document.getElementById('btn-mobile-pause');
+            if (revBtn) revBtn.style.display = 'inline-flex';
+            if (pBtn) pBtn.style.display = 'inline-flex';
           }
           AudioManager.playGameStart();
           MusicManager.startGameMusic();
         }
       }, 1000);
     },
+    
     pauseGame() {
       if (this.state === 'PLAYING') {
         this.state = 'PAUSED';
         UIManager.showScreen('pause');
       }
     },
+    
     resumeGame() {
       if (this.state === 'PAUSED') {
         this.state = 'PLAYING';
         UIManager.hideAllScreens();
       }
     },
+    
     gameOver() {
       this.state = 'GAME_OVER';
-      this.player.isAlive = false;
-      spawnParticles(this.player.x, this.player.y, 40, '#ff007c', 200);
+      if (this.player) this.player.isAlive = false;
+      spawnParticles(this.player ? this.player.x : this.logicalWidth/2, this.player ? this.player.y : this.logicalHeight/2, 35, '#ff007c', 160);
       AudioManager.playCollision();
       MusicManager.stopMusic();
+      
       if (DeviceManager.isAndroid()) {
-        mobileReverseBtn.style.display = 'none';
-        mobilePauseBtn.style.display = 'none';
+        const revBtn = document.getElementById('btn-reverse-gravity');
+        const pBtn = document.getElementById('btn-mobile-pause');
+        if (revBtn) revBtn.style.display = 'none';
+        if (pBtn) pBtn.style.display = 'none';
       }
+      
       UIManager.triggerScreenShake();
       ScoreManager.saveHighScore();
       setTimeout(() => {
         UIManager.showGameOver(ScoreManager.score, SettingsManager.getHighScore(), ScoreManager.timeSurvived, ScoreManager.isNewHighScore);
-      }, 1000);
+      }, 750);
     },
+    
     returnToMenu() {
       this.state = 'MENU';
       UIManager.showScreen('menu');
       UIManager.updateMenuFacts();
+      
       if (DeviceManager.isAndroid()) {
-        mobileReverseBtn.style.display = 'none';
-        mobilePauseBtn.style.display = 'none';
+        const revBtn = document.getElementById('btn-reverse-gravity');
+        const pBtn = document.getElementById('btn-mobile-pause');
+        if (revBtn) revBtn.style.display = 'none';
+        if (pBtn) pBtn.style.display = 'none';
       }
+      
       UIManager.updateScore(0);
       UIManager.updateHighScore(SettingsManager.getHighScore());
       MusicManager.startMenuMusic();
     },
+    
     getDifficultyMultiplier() {
-      return 1 + (this.difficultyTimer / DIFFICULTY_INTERVAL) * 0.5;
+      // Gentle progression curve
+      // 0-20s: 1.0 (Very Easy)
+      // 20-40s: 1.12 (Easy)
+      // 40-60s: 1.25 (Normal)
+      // 60s+: Capped at 1.45 max (Challenging, but fair)
+      if (this.difficultyTimer < 20) return 1.0;
+      if (this.difficultyTimer < 40) return 1.0 + (this.difficultyTimer - 20) * 0.006;
+      if (this.difficultyTimer < 60) return 1.12 + (this.difficultyTimer - 40) * 0.0065;
+      const overtime = this.difficultyTimer - 60;
+      return Math.min(1.45, 1.25 + overtime * 0.003);
     },
+    
     getSpawnInterval() {
       return BASE_SPAWN_INTERVAL / this.getDifficultyMultiplier();
     },
+    
     reverseGravity() {
       this.gravity = -this.gravity;
       UIManager.updateGravityIndicator(this.gravity, 'Manual Reverse');
       AudioManager.playReverse();
       if (this.player) {
-        spawnParticles(this.player.x, this.player.y, 20, '#00f3ff', 50);
+        spawnParticles(this.player.x, this.player.y, 16, '#00f3ff', 40);
       }
       DynamicGravity.timer = 0;
     },
+    
     update(dt) {
       this.difficultyTimer += dt;
       this.obstacleSpawnTimer += dt * 1000;
       this.crystalSpawnTimer += dt * 1000;
       
       DynamicGravity.update(dt);
-      SpaceRenderer.update(dt, this.canvas.clientWidth, this.canvas.clientHeight);
+      SpaceRenderer.update(dt, this.logicalWidth, this.logicalHeight);
       
       let inputDir = 0;
       if (keys['ArrowLeft'] || keys['KeyA'] || keys['TouchLeft']) inputDir -= 1;
       if (keys['ArrowRight'] || keys['KeyD'] || keys['TouchRight']) inputDir += 1;
       
-      if ((keys['ArrowUp'] || keys['KeyW'] || keys['TouchJump']) && this.player.isGrounded) {
+      if ((keys['ArrowUp'] || keys['KeyW'] || keys['TouchJump']) && this.player && this.player.isGrounded) {
         this.player.vy = (this.gravity > 0) ? PLAYER_JUMP_FORCE : -PLAYER_JUMP_FORCE;
         this.player.isGrounded = false;
       }
       
-      this.player.update(dt, this.canvas.clientWidth, this.canvas.clientHeight, this.gravity, inputDir);
+      if (this.player) {
+        this.player.update(dt, this.logicalWidth, this.logicalHeight, this.gravity, inputDir);
+      }
       
       if (this.obstacleSpawnTimer >= this.getSpawnInterval()) {
         this.obstacleSpawnTimer = 0;
-        spawnObstacle(this.canvas.clientWidth, this.canvas.clientHeight, this.getDifficultyMultiplier());
+        spawnObstacle(this.logicalWidth, this.logicalHeight, this.getDifficultyMultiplier());
       }
-      if (this.crystalSpawnTimer >= 3000) {
+      if (this.crystalSpawnTimer >= 3500) {
         this.crystalSpawnTimer = 0;
-        spawnCrystal(this.canvas.clientWidth, this.canvas.clientHeight);
+        spawnCrystal(this.logicalWidth, this.logicalHeight);
       }
       
       updateObstacles(dt);
@@ -1518,40 +1449,43 @@
       ScoreManager.update(dt);
       UIManager.updateScore(ScoreManager.score);
       
-      // Collisions
-      obstacles.forEach(obs => {
-        if (!obs.active) return;
-        if (obs.type === 'laser') {
-          if (this.player.y + this.player.radius > obs.y && this.player.y - this.player.radius < obs.y + obs.height) {
-            this.gameOver();
+      // Collision detection
+      if (this.player && this.player.isAlive) {
+        obstacles.forEach(obs => {
+          if (!obs.active) return;
+          if (obs.type === 'laser') {
+            if (this.player.y + this.player.radius > obs.y && this.player.y - this.player.radius < obs.y + obs.height) {
+              this.gameOver();
+            }
+          } else {
+            const px = Math.max(obs.x, Math.min(this.player.x, obs.x + obs.width));
+            const py = Math.max(obs.y, Math.min(this.player.y, obs.y + obs.height));
+            const dist = Math.hypot(this.player.x - px, this.player.y - py);
+            if (dist < this.player.radius * 0.85) { // Fair collision margin
+              this.gameOver();
+            }
           }
-        } else {
-          let px = Math.max(obs.x, Math.min(this.player.x, obs.x + obs.width));
-          let py = Math.max(obs.y, Math.min(this.player.y, obs.y + obs.height));
-          let dist = Math.sqrt((this.player.x - px)**2 + (this.player.y - py)**2);
-          if (dist < this.player.radius) {
-            this.gameOver();
+        });
+        
+        crystals.forEach(c => {
+          if (!c.collected) {
+            const dist = Math.hypot(this.player.x - c.x, this.player.y - c.y);
+            if (dist < this.player.radius + c.radius) {
+              c.collected = true;
+              ScoreManager.addPoints(CRYSTAL_SCORE, c.x, c.y);
+              AudioManager.playCrystal();
+              spawnParticles(c.x, c.y, 12, '#00f3ff', 60);
+            }
           }
-        }
-      });
-      
-      crystals.forEach(c => {
-        if (!c.collected) {
-          let dist = Math.sqrt((this.player.x - c.x)**2 + (this.player.y - c.y)**2);
-          if (dist < this.player.radius + c.radius) {
-            c.collected = true;
-            ScoreManager.addPoints(CRYSTAL_SCORE, c.x, c.y);
-            AudioManager.playCrystal();
-            spawnParticles(c.x, c.y, 15, '#00f3ff', 80);
-          }
-        }
-      });
+        });
+      }
     },
+    
     render(ctx, w, h, dt) {
       SpaceRenderer.renderGameplay(ctx, w, h, this.player, dt);
       if (this.state === 'PLAYING' || this.state === 'PAUSED' || this.state === 'GAME_OVER') {
         renderCrystals(ctx);
-        renderObstacles(ctx);
+        renderObstacles(ctx, w);
         if (this.player) this.player.draw(ctx);
         renderParticles(ctx);
       }
@@ -1563,13 +1497,14 @@
   // ==========================================================================
   let menuAnimationId = null;
   let menuFactInterval = null;
+
   function startMenuAnimation() {
     const menuCanvas = document.getElementById('menu-canvas');
     if (!menuCanvas) return;
     const ctx = menuCanvas.getContext('2d');
     
     function resizeMenuCanvas() {
-      if(menuCanvas.parentElement) {
+      if (menuCanvas.parentElement) {
         menuCanvas.width = menuCanvas.parentElement.clientWidth;
         menuCanvas.height = menuCanvas.parentElement.clientHeight;
       }
@@ -1581,7 +1516,7 @@
     if (!menuFactInterval) {
       menuFactInterval = setInterval(() => {
         UIManager.updateMenuFacts();
-      }, 7000);
+      }, 7500);
     }
     
     let lastTime = performance.now();
@@ -1596,6 +1531,7 @@
     }
     if (!menuAnimationId) menuAnimationId = requestAnimationFrame(menuLoop);
   }
+
   function stopMenuAnimation() {
     if (menuAnimationId) {
       cancelAnimationFrame(menuAnimationId);
@@ -1613,8 +1549,13 @@
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if (e.code === 'Space' && GameManager.state === 'PLAYING') {
-      GameManager.reverseGravity();
+    if (e.code === 'Space') {
+      if (GameManager.state === 'PLAYING') {
+        GameManager.reverseGravity();
+      } else if (GameManager.state === 'MENU') {
+        AudioManager.init();
+        GameManager.startGame();
+      }
       e.preventDefault();
     }
     if (e.code === 'Escape') {
@@ -1626,6 +1567,7 @@
       GameManager.startGame();
     }
   });
+
   window.addEventListener('keyup', e => {
     keys[e.code] = false;
   });
@@ -1637,7 +1579,7 @@
   let fps = 60;
   let frameCount = 0;
   let fpsLastTime = 0;
-  
+
   function loop(currentTime) {
     let dt = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
@@ -1651,13 +1593,13 @@
       fpsLastTime = currentTime;
     }
     
-    if (GameManager.state === 'PLAYING' || GameManager.state === 'PAUSED' || GameManager.state === 'GAME_OVER' || GameManager.state === 'COUNTDOWN') {
-      GameManager.ctx.clearRect(0, 0, GameManager.canvas.width, GameManager.canvas.height);
-      GameManager.render(GameManager.ctx, GameManager.canvas.width, GameManager.canvas.height, dt);
-    }
-    
-    if (GameManager.state === 'PLAYING') {
-      GameManager.update(dt);
+    if (GameManager.ctx) {
+      GameManager.ctx.clearRect(0, 0, GameManager.logicalWidth, GameManager.logicalHeight);
+      GameManager.render(GameManager.ctx, GameManager.logicalWidth, GameManager.logicalHeight, dt);
+      
+      if (GameManager.state === 'PLAYING') {
+        GameManager.update(dt);
+      }
     }
     
     requestAnimationFrame(loop);
@@ -1773,8 +1715,9 @@
     musicSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       SettingsManager.set('musicVolume', val);
+      const valDisplay = document.getElementById('settings-music-value');
+      if (valDisplay) valDisplay.textContent = `${val}%`;
       MusicManager.setVolume(val);
-      if (UIManager.els.settingsMusicValue) UIManager.els.settingsMusicValue.textContent = val;
     });
   }
 
@@ -1783,9 +1726,11 @@
     sfxSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       SettingsManager.set('sfxVolume', val);
-      if (UIManager.els.settingsSfxValue) UIManager.els.settingsSfxValue.textContent = val;
+      const valDisplay = document.getElementById('settings-sfx-value');
+      if (valDisplay) valDisplay.textContent = `${val}%`;
     });
     sfxSlider.addEventListener('change', () => {
+      AudioManager.init();
       AudioManager.playClick();
     });
   }
@@ -1802,14 +1747,14 @@
   const themeGrid = document.getElementById('theme-grid');
   if (themeGrid) {
     themeGrid.addEventListener('click', (e) => {
-      const btn = e.target.closest('.theme-btn');
-      if (btn) {
-        AudioManager.playClick();
-        const theme = btn.dataset.theme;
-        SettingsManager.set('theme', theme);
-        SpaceRenderer.setTheme(theme);
-        UIManager.updateSettingsUI();
-      }
+      const btn = e.target.closest('.theme-option');
+      if (!btn) return;
+      AudioManager.init();
+      AudioManager.playClick();
+      const theme = btn.dataset.theme;
+      SettingsManager.set('theme', theme);
+      SpaceRenderer.setTheme(theme);
+      UIManager.updateSettingsUI();
     });
   }
 
@@ -1823,75 +1768,82 @@
 
   if (mobileReverseBtn) {
     mobileReverseBtn.addEventListener('touchstart', function(e) {
-      e.preventDefault(); e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
       if (GameManager.state === 'PLAYING') {
-        AudioManager.init(); GameManager.reverseGravity();
+        AudioManager.init();
+        GameManager.reverseGravity();
       }
     }, { passive: false });
-
+    
     mobileReverseBtn.addEventListener('click', function(e) {
       e.preventDefault();
       if (GameManager.state === 'PLAYING') {
-        AudioManager.init(); GameManager.reverseGravity();
+        AudioManager.init();
+        GameManager.reverseGravity();
       }
     });
   }
 
   if (mobilePauseBtn) {
     mobilePauseBtn.addEventListener('touchstart', function(e) {
-      e.preventDefault(); e.stopPropagation();
-      AudioManager.init(); AudioManager.playClick();
+      e.preventDefault();
+      e.stopPropagation();
+      AudioManager.init();
+      AudioManager.playClick();
       if (GameManager.state === 'PLAYING') GameManager.pauseGame();
       else if (GameManager.state === 'PAUSED') GameManager.resumeGame();
     }, { passive: false });
-
+    
     mobilePauseBtn.addEventListener('click', function(e) {
       e.preventDefault();
-      AudioManager.init(); AudioManager.playClick();
+      AudioManager.init();
+      AudioManager.playClick();
       if (GameManager.state === 'PLAYING') GameManager.pauseGame();
       else if (GameManager.state === 'PAUSED') GameManager.resumeGame();
     });
   }
 
+  // Multi-zone Touch Navigation & Tap-to-Reverse
   let activeTouches = {};
   function getTouchAction(touch) {
     const x = touch.clientX;
     const y = touch.clientY;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const thirdW = w / 3;
+    
+    // Ignore top-right pause and bottom reverse button areas
+    if (x > w - 60 && y < 100) return null;
+    if (y > h - 70) return null;
 
-    if (x > w - 100 && y > h - 100) return null;
-    if (x > w - 70 && y < 120) return null;
-
-    if (x < thirdW) return 'left';
-    if (x > thirdW * 2) return 'right';
-    return 'jump';
+    if (x < w * 0.3) return 'left';
+    if (x > w * 0.7) return 'right';
+    return 'reverse'; // Tapping middle reverses gravity
   }
 
   function updateTouchKeys() {
     keys['TouchLeft'] = false;
     keys['TouchRight'] = false;
-    keys['TouchJump'] = false;
-
-    if (!DeviceManager.isAndroid()) return;
-
     for (const id in activeTouches) {
-      const action = activeTouches[id];
-      if (action === 'left') keys['TouchLeft'] = true;
-      if (action === 'right') keys['TouchRight'] = true;
-      if (action === 'jump') keys['TouchJump'] = true;
+      const act = activeTouches[id];
+      if (act === 'left') keys['TouchLeft'] = true;
+      if (act === 'right') keys['TouchRight'] = true;
     }
   }
 
   const gameViewport = document.querySelector('.game-viewport');
-  if (gameViewport && IS_TOUCH_DEVICE) {
+  if (gameViewport) {
     gameViewport.addEventListener('touchstart', function(e) {
       if (GameManager.state !== 'PLAYING') return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         const action = getTouchAction(touch);
-        if (action) activeTouches[touch.identifier] = action;
+        if (action === 'reverse') {
+          AudioManager.init();
+          GameManager.reverseGravity();
+        } else if (action) {
+          activeTouches[touch.identifier] = action;
+        }
       }
       updateTouchKeys();
     }, { passive: true });
@@ -1916,7 +1868,7 @@
   // ==========================================================================
   let orientationDismissed = false;
   function checkOrientation() {
-    if (!DeviceManager.isAndroid() || orientationDismissed || !orientationHint) return;
+    if (!DeviceManager.isAndroid() || orientationDismissed) return;
     const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
     if (isPortrait) orientationHint.classList.add('visible');
     else orientationHint.classList.remove('visible');
@@ -1938,7 +1890,7 @@
 
   window.addEventListener('resize', checkOrientation);
   window.addEventListener('orientationchange', function() {
-    setTimeout(checkOrientation, 100);
+    setTimeout(checkOrientation, 150);
   });
 
   document.addEventListener('touchmove', function(e) {
@@ -1949,35 +1901,37 @@
     if (GameManager.state === 'PLAYING') e.preventDefault();
   });
 
-  let lastTouchEnd = 0;
-  document.addEventListener('touchend', function(e) {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
-    lastTouchEnd = now;
-  }, { passive: false });
-
   // ==========================================================================
-  // 22. CANVAS RESIZE
+  // 22. CANVAS RESIZE (ACCURATE LOGICAL SCALING)
   // ==========================================================================
   function resizeCanvas() {
-    if (!GameManager.canvas.parentElement) return;
+    if (!GameManager.canvas || !GameManager.canvas.parentElement) return;
     const dpr = window.devicePixelRatio || 1;
-    const w = GameManager.canvas.parentElement.clientWidth;
-    const h = GameManager.canvas.parentElement.clientHeight;
-    GameManager.canvas.width = w * dpr;
-    GameManager.canvas.height = h * dpr;
-    GameManager.ctx.scale(dpr, dpr);
+    const w = GameManager.canvas.parentElement.clientWidth || 920;
+    const h = GameManager.canvas.parentElement.clientHeight || 480;
+    
+    GameManager.logicalWidth = w;
+    GameManager.logicalHeight = h;
+    
+    GameManager.canvas.width = Math.round(w * dpr);
+    GameManager.canvas.height = Math.round(h * dpr);
     GameManager.canvas.style.width = w + 'px';
     GameManager.canvas.style.height = h + 'px';
+    
+    GameManager.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    GameManager.ctx.scale(dpr, dpr);
+    
     Object.defineProperty(GameManager.canvas, 'clientWidth', { value: w, configurable: true });
     Object.defineProperty(GameManager.canvas, 'clientHeight', { value: h, configurable: true });
+    
+    SpaceRenderer.init(w, h);
   }
 
   // ==========================================================================
-  // 23. INITIALIZATION ORDER
+  // 23. INITIALIZATION
   // ==========================================================================
   SettingsManager.init();
-  SpaceRenderer.setTheme(SettingsManager.get('theme'));
+  SpaceRenderer.setTheme(SettingsManager.get('theme') || 'deep-space');
   GameManager.init();
   lastTime = performance.now();
   fpsLastTime = lastTime;
