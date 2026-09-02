@@ -35,303 +35,337 @@
     </header>
 
     <main class="game-main">
-      <section class="game-viewport">
-        <canvas id="game-canvas"></canvas>
+      <section class="game-viewport-container" id="game-viewport-container">
+        <div class="game-viewport" id="game-viewport">
+          <canvas id="game-canvas"></canvas>
 
-        <!-- In-Game HUD -->
-        <div class="game-hud" id="game-hud">
-          <div class="hud-left">
-            <div class="hud-score-display">
-              <span class="hud-score-label">SCORE</span>
-              <span class="hud-score-value font-mono" id="hud-score">0</span>
+          <!-- In-Game HUD -->
+          <div class="game-hud" id="game-hud">
+            <div class="hud-left">
+              <div class="hud-score-display">
+                <span class="hud-score-label">SCORE</span>
+                <span class="hud-score-value font-mono" id="hud-score">0</span>
+              </div>
+            </div>
+            <div class="hud-center">
+              <div class="gravity-indicator" id="gravity-indicator">
+                <i class="fa-solid fa-arrow-down" id="gravity-arrow"></i>
+                <span class="gravity-label font-mono" id="gravity-label">9.8 m/s²</span>
+              </div>
+            </div>
+            <div class="hud-right">
+              <div class="hud-highscore-display">
+                <span class="hud-highscore-label">BEST</span>
+                <span class="hud-highscore-value font-mono" id="hud-highscore">0</span>
+              </div>
+              <div class="hud-fps">
+                <span class="font-mono" id="hud-fps">60</span> FPS
+              </div>
             </div>
           </div>
-          <div class="hud-center">
-            <div class="gravity-indicator" id="gravity-indicator">
-              <i class="fa-solid fa-arrow-down" id="gravity-arrow"></i>
-              <span class="gravity-label font-mono" id="gravity-label">9.8 m/s²</span>
+
+          <!-- Gravity Change Notification -->
+          <div class="gravity-notification" id="gravity-notification">
+            <span id="gravity-notif-text"></span>
+          </div>
+
+          <!-- Score Popups -->
+          <div class="score-popups" id="score-popups"></div>
+
+          <!-- Orientation Hint -->
+          <div class="orientation-hint" id="orientation-hint">
+            <div class="orientation-hint-content">
+              <i class="fa-solid fa-mobile-screen-button orientation-icon"></i>
+              <p>Rotate your device for the best experience ↻</p>
+              <span class="orientation-dismiss" id="orientation-dismiss">Tap to continue anyway</span>
             </div>
           </div>
-          <div class="hud-right">
-            <div class="hud-highscore-display">
-              <span class="hud-highscore-label">BEST</span>
-              <span class="hud-highscore-value font-mono" id="hud-highscore">0</span>
-            </div>
-            <div class="hud-fps">
-              <span class="font-mono" id="hud-fps">60</span> FPS
+
+          <!-- ======= SCREEN OVERLAYS ======= -->
+
+          <!-- Device Selection Screen -->
+          <div class="game-overlay" id="screen-device">
+            <div class="overlay-content device-content glass-card">
+              <div class="overlay-header">
+                <h2><i class="fa-solid fa-gamepad"></i> Select Device</h2>
+              </div>
+              <div class="overlay-body device-body">
+                <h3 class="device-title">How are you playing?</h3>
+                <p class="device-subtitle">Select your device for the best controls &amp; layout</p>
+                <div class="device-options">
+                  <button id="btn-device-pc" class="device-card">
+                    <i class="fa-solid fa-desktop device-card-icon"></i>
+                    <span class="device-card-label">🖥️ PC</span>
+                    <span class="device-card-desc">Keyboard &amp; Mouse</span>
+                  </button>
+                  <button id="btn-device-android" class="device-card">
+                    <i class="fa-solid fa-mobile-screen device-card-icon"></i>
+                    <span class="device-card-label">📱 ANDROID</span>
+                    <span class="device-card-desc">Touch Controls</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Gravity Change Notification -->
-        <div class="gravity-notification" id="gravity-notification">
-          <span id="gravity-notif-text"></span>
-        </div>
-
-        <!-- Score Popups -->
-        <div class="score-popups" id="score-popups"></div>
-
-        <!-- Orientation Hint -->
-        <div class="orientation-hint" id="orientation-hint">
-          <div class="orientation-hint-content">
-            <i class="fa-solid fa-mobile-screen-button orientation-icon"></i>
-            <p>Rotate your device for the best experience ↻</p>
-            <span class="orientation-dismiss" id="orientation-dismiss">Tap to continue anyway</span>
-          </div>
-        </div>
-
-        <!-- ======= SCREEN OVERLAYS ======= -->
-
-        <!-- Device Selection Screen -->
-        <div class="game-overlay" id="screen-device">
-          <div class="overlay-content device-content glass-card">
-            <div class="overlay-header">
-              <h2><i class="fa-solid fa-gamepad"></i> Select Device</h2>
-            </div>
-            <div class="overlay-body device-body">
-              <h3 class="device-title">How are you playing?</h3>
-              <p class="device-subtitle">Select your device for the best controls &amp; layout</p>
-              <div class="device-options">
-                <button id="btn-device-pc" class="device-card">
-                  <i class="fa-solid fa-desktop device-card-icon"></i>
-                  <span class="device-card-label">🖥️ PC</span>
-                  <span class="device-card-desc">Keyboard &amp; Mouse</span>
+          <!-- Main Menu -->
+          <div class="game-overlay hidden" id="screen-menu">
+            <canvas id="menu-canvas" class="menu-bg-canvas"></canvas>
+            <div class="overlay-content menu-content glass-card">
+              <div class="menu-logo">
+                <i class="fa-solid fa-atom menu-logo-icon"></i>
+                <h1 class="menu-title">GRAVITY<span class="logo-accent">LAB</span></h1>
+                <p class="menu-subtitle">Master Gravity. Beat Physics.</p>
+              </div>
+              <div class="menu-buttons">
+                <button id="btn-play" class="btn btn-primary btn-glass">
+                  <i class="fa-solid fa-play"></i> Play
                 </button>
-                <button id="btn-device-android" class="device-card">
-                  <i class="fa-solid fa-mobile-screen device-card-icon"></i>
-                  <span class="device-card-label">📱 ANDROID</span>
-                  <span class="device-card-desc">Touch Controls</span>
+                <button id="btn-menu-instructions" class="btn btn-secondary btn-glass">
+                  <i class="fa-solid fa-circle-question"></i> Instructions
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Menu -->
-        <div class="game-overlay hidden" id="screen-menu">
-          <canvas id="menu-canvas" class="menu-bg-canvas"></canvas>
-          <div class="overlay-content menu-content glass-card">
-            <div class="menu-logo">
-              <i class="fa-solid fa-atom menu-logo-icon"></i>
-              <h1 class="menu-title">GRAVITY<span class="logo-accent">LAB</span></h1>
-              <p class="menu-subtitle">Master Gravity. Beat Physics.</p>
-            </div>
-            <div class="menu-buttons">
-              <button id="btn-play" class="btn btn-primary btn-glass">
-                <i class="fa-solid fa-play"></i> Play
-              </button>
-              <button id="btn-menu-instructions" class="btn btn-secondary btn-glass">
-                <i class="fa-solid fa-circle-question"></i> Instructions
-              </button>
-              <button id="btn-menu-settings" class="btn btn-secondary btn-glass">
-                <i class="fa-solid fa-gear"></i> Settings
-              </button>
-              <button id="btn-menu-highscores" class="btn btn-secondary btn-glass">
-                <i class="fa-solid fa-trophy"></i> High Scores
-              </button>
-            </div>
-            <div class="menu-footer">
-              <div class="menu-fact-box">
-                <i class="fa-solid fa-lightbulb"></i>
-                <p id="menu-fact-text">Gravity travels at the speed of light.</p>
-              </div>
-              <span class="menu-hint font-mono desktop-hint">Press SPACE / ENTER to start</span>
-              <span class="menu-hint font-mono mobile-hint">Tap Play to start</span>
-              <div class="menu-shahriar-fact">
-                <p id="menu-shahriar-fact"></p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Instructions -->
-        <div class="game-overlay hidden" id="screen-instructions">
-          <div class="overlay-content instructions-content glass-card">
-            <div class="overlay-header">
-              <h2><i class="fa-solid fa-circle-question"></i> How to Play</h2>
-              <button id="btn-close-instructions" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="overlay-body instructions-body">
-              <div class="instruction-step">
-                <h3><i class="fa-solid fa-arrow-up"></i> 1. Control Gravity</h3>
-                <p>Press <kbd>SPACE</kbd> or tap the <strong>Reverse Gravity</strong> button to flip gravity. Gravity also shifts gradually during gameplay!</p>
-              </div>
-              <div class="instruction-step">
-                <h3><i class="fa-solid fa-arrows-left-right"></i> 2. Move &amp; Jump</h3>
-                <p><strong>Desktop:</strong> Use <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> to steer. Press <kbd>↑</kbd> or <kbd>W</kbd> to jump.<br><strong>Mobile:</strong> Tap left/right sides to steer, or center to jump.</p>
-              </div>
-              <div class="instruction-step">
-                <h3><i class="fa-solid fa-diamond text-cyan"></i> 3. Collect Crystals</h3>
-                <p>Collect glowing <strong>energy crystals</strong> for <strong>+10 points</strong> each.</p>
-              </div>
-              <div class="instruction-step">
-                <h3><i class="fa-solid fa-skull-crossbones text-red"></i> 4. Dodge Obstacles</h3>
-                <p>Avoid red spikes, blocks, and lasers. Watch for laser warnings before they fire!</p>
-              </div>
-              <div class="instruction-step">
-                <h3><i class="fa-solid fa-trophy text-yellow"></i> 5. Survive &amp; Score</h3>
-                <p>Score increases as you survive. Challenge yourself to beat your personal best!</p>
-              </div>
-            </div>
-            <div class="overlay-footer">
-              <button id="btn-instructions-back" class="btn btn-primary">Got it!</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Settings -->
-        <div class="game-overlay hidden" id="screen-settings">
-          <div class="overlay-content settings-content glass-card">
-            <div class="overlay-header">
-              <h2><i class="fa-solid fa-gear"></i> Settings</h2>
-              <button id="btn-close-settings" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="overlay-body settings-body">
-              <div class="settings-section">
-                <h3 class="settings-section-title">Audio</h3>
-                <div class="settings-row">
-                  <label for="settings-music-volume"><i class="fa-solid fa-music"></i> Music</label>
-                  <div class="slider-group">
-                    <input type="range" id="settings-music-volume" min="0" max="100" value="25" class="settings-slider">
-                    <span class="settings-value font-mono" id="settings-music-value">25%</span>
-                  </div>
-                </div>
-                <div class="settings-row">
-                  <label for="settings-sfx-volume"><i class="fa-solid fa-volume-high"></i> Sound FX</label>
-                  <div class="slider-group">
-                    <input type="range" id="settings-sfx-volume" min="0" max="100" value="50" class="settings-slider">
-                    <span class="settings-value font-mono" id="settings-sfx-value">50%</span>
-                  </div>
-                </div>
-              </div>
-              <div class="settings-section">
-                <h3 class="settings-section-title">Customization</h3>
-                <div class="settings-row">
-                  <label><i class="fa-solid fa-circle"></i> Ball Color</label>
-                  <div class="color-picker-row">
-                    <input type="color" id="settings-ball-color" value="#00f3ff" class="color-picker">
-                    <span class="color-preview" id="color-preview"></span>
-                  </div>
-                </div>
-                <div class="settings-row settings-row-themes">
-                  <label><i class="fa-solid fa-palette"></i> Background Theme</label>
-                  <div class="theme-grid" id="theme-grid">
-                    <button class="theme-option active" data-theme="deep-space"><span class="theme-swatch ts-deep-space"></span>Deep Space</button>
-                    <button class="theme-option" data-theme="bright-sky"><span class="theme-swatch ts-bright-sky"></span>Bright Sky</button>
-                    <button class="theme-option" data-theme="sunset"><span class="theme-swatch ts-sunset"></span>Sunset</button>
-                    <button class="theme-option" data-theme="galaxy"><span class="theme-swatch ts-galaxy"></span>Galaxy</button>
-                    <button class="theme-option" data-theme="nebula"><span class="theme-swatch ts-nebula"></span>Nebula</button>
-                    <button class="theme-option" data-theme="dark-laboratory"><span class="theme-swatch ts-dark-laboratory"></span>Dark Lab</button>
-                  </div>
-                </div>
-              </div>
-              <div class="settings-section">
-                <h3 class="settings-section-title">Device Mode</h3>
-                <div class="settings-row">
-                  <label><i class="fa-solid fa-display"></i> Mode</label>
-                  <button id="btn-change-device" class="btn btn-secondary btn-small"><i class="fa-solid fa-repeat"></i> Change Device</button>
-                </div>
-              </div>
-            </div>
-            <div class="overlay-footer">
-              <button id="btn-settings-back" class="btn btn-primary">Done</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- High Scores -->
-        <div class="game-overlay hidden" id="screen-highscores">
-          <div class="overlay-content highscores-content glass-card">
-            <div class="overlay-header">
-              <h2><i class="fa-solid fa-trophy"></i> High Scores</h2>
-              <button id="btn-close-highscores" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="overlay-body highscores-body">
-              <div class="highscores-list" id="highscores-list">
-                <!-- Populated by JS -->
-              </div>
-            </div>
-            <div class="overlay-footer">
-              <button id="btn-highscores-back" class="btn btn-primary">Back</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Countdown -->
-        <div class="game-overlay hidden" id="screen-countdown">
-          <div class="overlay-content countdown-content">
-            <span class="countdown-number font-mono" id="countdown-number">3</span>
-          </div>
-        </div>
-
-        <!-- Pause -->
-        <div class="game-overlay hidden" id="screen-pause">
-          <div class="overlay-content pause-content glass-card">
-            <div class="overlay-header">
-              <h2 class="pause-title"><i class="fa-solid fa-pause"></i> PAUSED</h2>
-            </div>
-            <div class="overlay-body pause-body">
-              <div class="pause-buttons">
-                <button id="btn-resume" class="btn btn-primary">
-                  <i class="fa-solid fa-play"></i> Resume
-                </button>
-                <button id="btn-pause-settings" class="btn btn-secondary">
+                <button id="btn-menu-settings" class="btn btn-secondary btn-glass">
                   <i class="fa-solid fa-gear"></i> Settings
                 </button>
-                <button id="btn-pause-menu" class="btn btn-secondary">
+                <button id="btn-menu-highscores" class="btn btn-secondary btn-glass">
+                  <i class="fa-solid fa-trophy"></i> High Scores
+                </button>
+              </div>
+              <div class="menu-footer">
+                <div class="menu-fact-box">
+                  <i class="fa-solid fa-lightbulb"></i>
+                  <p id="menu-fact-text">Gravity travels at the speed of light.</p>
+                </div>
+                <span class="menu-hint font-mono desktop-hint">Press SPACE / ENTER to start</span>
+                <span class="menu-hint font-mono mobile-hint">Tap Play to start</span>
+                <div class="menu-shahriar-fact">
+                  <p id="menu-shahriar-fact"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="game-overlay hidden" id="screen-instructions">
+            <div class="overlay-content instructions-content glass-card">
+              <div class="overlay-header">
+                <h2><i class="fa-solid fa-circle-question"></i> How to Play</h2>
+                <button id="btn-close-instructions" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="overlay-body instructions-body">
+                <div class="instruction-step">
+                  <h3><i class="fa-solid fa-arrow-up-down"></i> 1. Control Gravity</h3>
+                  <p>Press <kbd>SPACE</kbd> or tap the <strong>🔄 REVERSE</strong> button to flip gravity. Gravity also shifts automatically!</p>
+                </div>
+                <div class="instruction-step">
+                  <h3><i class="fa-solid fa-arrows-up-down-left-right"></i> 2. Movement &amp; Jump</h3>
+                  <p><strong>Desktop:</strong> Move with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>. Jump with <kbd>↑</kbd> or <kbd>W</kbd>. Descend with <kbd>↓</kbd> or <kbd>S</kbd>.<br><strong>Mobile:</strong> Use the on-screen virtual controller buttons.</p>
+                </div>
+                <div class="instruction-step">
+                  <h3><i class="fa-solid fa-diamond text-cyan"></i> 3. Collect Crystals</h3>
+                  <p>Collect glowing <strong>energy crystals</strong> for <strong>+10 points</strong> each.</p>
+                </div>
+                <div class="instruction-step">
+                  <h3><i class="fa-solid fa-skull-crossbones text-red"></i> 4. Dodge Obstacles</h3>
+                  <p>Avoid red spikes, blocks, and lasers. Watch for laser warnings before they fire!</p>
+                </div>
+                <div class="instruction-step">
+                  <h3><i class="fa-solid fa-trophy text-yellow"></i> 5. Survive &amp; Score</h3>
+                  <p>Score increases as you survive. Challenge yourself to beat your personal best!</p>
+                </div>
+              </div>
+              <div class="overlay-footer">
+                <button id="btn-instructions-back" class="btn btn-primary">Got it!</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div class="game-overlay hidden" id="screen-settings">
+            <div class="overlay-content settings-content glass-card">
+              <div class="overlay-header">
+                <h2><i class="fa-solid fa-gear"></i> Settings</h2>
+                <button id="btn-close-settings" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="overlay-body settings-body">
+                <div class="settings-section">
+                  <h3 class="settings-section-title">Audio</h3>
+                  <div class="settings-row">
+                    <label for="settings-music-volume"><i class="fa-solid fa-music"></i> Music</label>
+                    <div class="slider-group">
+                      <input type="range" id="settings-music-volume" min="0" max="100" value="25" class="settings-slider">
+                      <span class="settings-value font-mono" id="settings-music-value">25%</span>
+                    </div>
+                  </div>
+                  <div class="settings-row">
+                    <label><i class="fa-solid fa-volume-high"></i> Music State</label>
+                    <button id="btn-toggle-music" class="btn btn-secondary btn-small">
+                      <i class="fa-solid fa-volume-high" id="music-toggle-icon"></i>
+                      <span id="music-toggle-text">Music: ON</span>
+                    </button>
+                  </div>
+                  <div class="settings-row">
+                    <label for="settings-sfx-volume"><i class="fa-solid fa-bullhorn"></i> Sound FX</label>
+                    <div class="slider-group">
+                      <input type="range" id="settings-sfx-volume" min="0" max="100" value="50" class="settings-slider">
+                      <span class="settings-value font-mono" id="settings-sfx-value">50%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <h3 class="settings-section-title">Customization</h3>
+                  <div class="settings-row">
+                    <label><i class="fa-solid fa-circle"></i> Ball Color</label>
+                    <div class="color-picker-row">
+                      <input type="color" id="settings-ball-color" value="#00f3ff" class="color-picker">
+                      <span class="color-preview" id="color-preview"></span>
+                    </div>
+                  </div>
+                  <div class="settings-row settings-row-themes">
+                    <label><i class="fa-solid fa-palette"></i> Background Theme</label>
+                    <div class="theme-grid" id="theme-grid">
+                      <button class="theme-option active" data-theme="deep-space"><span class="theme-swatch ts-deep-space"></span>Deep Space</button>
+                      <button class="theme-option" data-theme="bright-sky"><span class="theme-swatch ts-bright-sky"></span>Bright Sky</button>
+                      <button class="theme-option" data-theme="sunset"><span class="theme-swatch ts-sunset"></span>Sunset</button>
+                      <button class="theme-option" data-theme="galaxy"><span class="theme-swatch ts-galaxy"></span>Galaxy</button>
+                      <button class="theme-option" data-theme="nebula"><span class="theme-swatch ts-nebula"></span>Nebula</button>
+                      <button class="theme-option" data-theme="dark-laboratory"><span class="theme-swatch ts-dark-laboratory"></span>Dark Lab</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-section">
+                  <h3 class="settings-section-title">Device Mode</h3>
+                  <div class="settings-row">
+                    <label><i class="fa-solid fa-display"></i> Mode</label>
+                    <button id="btn-change-device" class="btn btn-secondary btn-small"><i class="fa-solid fa-repeat"></i> Change Device</button>
+                  </div>
+                </div>
+              </div>
+              <div class="overlay-footer">
+                <button id="btn-settings-back" class="btn btn-primary">Done</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- High Scores -->
+          <div class="game-overlay hidden" id="screen-highscores">
+            <div class="overlay-content highscores-content glass-card">
+              <div class="overlay-header">
+                <h2><i class="fa-solid fa-trophy"></i> High Scores</h2>
+                <button id="btn-close-highscores" class="btn-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="overlay-body highscores-body">
+                <div class="highscores-list" id="highscores-list">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+              <div class="overlay-footer">
+                <button id="btn-highscores-back" class="btn btn-primary">Back</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Countdown -->
+          <div class="game-overlay hidden" id="screen-countdown">
+            <div class="overlay-content countdown-content">
+              <span class="countdown-number font-mono" id="countdown-number">3</span>
+            </div>
+          </div>
+
+          <!-- Pause -->
+          <div class="game-overlay hidden" id="screen-pause">
+            <div class="overlay-content pause-content glass-card">
+              <div class="overlay-header">
+                <h2 class="pause-title"><i class="fa-solid fa-pause"></i> PAUSED</h2>
+              </div>
+              <div class="overlay-body pause-body">
+                <div class="pause-buttons">
+                  <button id="btn-resume" class="btn btn-primary">
+                    <i class="fa-solid fa-play"></i> Resume
+                  </button>
+                  <button id="btn-pause-settings" class="btn btn-secondary">
+                    <i class="fa-solid fa-gear"></i> Settings
+                  </button>
+                  <button id="btn-pause-menu" class="btn btn-secondary">
+                    <i class="fa-solid fa-house"></i> Main Menu
+                  </button>
+                </div>
+                <p class="pause-hint font-mono"><span class="desktop-hint">Press ESC to resume</span><span class="mobile-hint">Tap Resume to continue</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Game Over (Humorous, missing tooth face) -->
+          <div class="game-overlay hidden" id="screen-gameover">
+            <div class="overlay-content gameover-content glass-card">
+              <canvas id="gameover-face-canvas" width="80" height="80"></canvas>
+              <h2 class="gameover-title">Game Over!</h2>
+              <p class="gameover-funny-text">You Lost! 😂</p>
+              <div class="gameover-new-highscore hidden" id="gameover-new-hs">
+                <i class="fa-solid fa-star"></i> NEW HIGH SCORE! <i class="fa-solid fa-star"></i>
+              </div>
+              <div class="gameover-stats">
+                <div class="gameover-stat">
+                  <span class="gameover-stat-label">Final Score</span>
+                  <span class="gameover-stat-value font-mono" id="gameover-score">0</span>
+                </div>
+                <div class="gameover-stat">
+                  <span class="gameover-stat-label">High Score</span>
+                  <span class="gameover-stat-value font-mono" id="gameover-highscore">0</span>
+                </div>
+                <div class="gameover-stat">
+                  <span class="gameover-stat-label">Time</span>
+                  <span class="gameover-stat-value font-mono" id="gameover-time">0s</span>
+                </div>
+              </div>
+              <div class="gameover-fact" id="gameover-fact">
+                <i class="fa-solid fa-lightbulb"></i>
+                <p id="gameover-fact-text">The Moon's gravity is only about 1/6 of Earth's.</p>
+              </div>
+              <div class="gameover-buttons">
+                <button id="btn-play-again" class="btn btn-primary">
+                  <i class="fa-solid fa-rotate-right"></i> Play Again
+                </button>
+                <button id="btn-gameover-menu" class="btn btn-secondary">
                   <i class="fa-solid fa-house"></i> Main Menu
                 </button>
               </div>
-              <p class="pause-hint font-mono"><span class="desktop-hint">Press ESC to resume</span><span class="mobile-hint">Tap Resume to continue</span></p>
             </div>
           </div>
-        </div>
 
-        <!-- Game Over (Humorous, missing tooth face) -->
-        <div class="game-overlay hidden" id="screen-gameover">
-          <div class="overlay-content gameover-content glass-card">
-            <canvas id="gameover-face-canvas" width="80" height="80"></canvas>
-            <h2 class="gameover-title">Game Over!</h2>
-            <p class="gameover-funny-text">You Lost! 😂</p>
-            <div class="gameover-new-highscore hidden" id="gameover-new-hs">
-              <i class="fa-solid fa-star"></i> NEW HIGH SCORE! <i class="fa-solid fa-star"></i>
-            </div>
-            <div class="gameover-stats">
-              <div class="gameover-stat">
-                <span class="gameover-stat-label">Final Score</span>
-                <span class="gameover-stat-value font-mono" id="gameover-score">0</span>
-              </div>
-              <div class="gameover-stat">
-                <span class="gameover-stat-label">High Score</span>
-                <span class="gameover-stat-value font-mono" id="gameover-highscore">0</span>
-              </div>
-              <div class="gameover-stat">
-                <span class="gameover-stat-label">Time</span>
-                <span class="gameover-stat-value font-mono" id="gameover-time">0s</span>
-              </div>
-            </div>
-            <div class="gameover-fact" id="gameover-fact">
-              <i class="fa-solid fa-lightbulb"></i>
-              <p id="gameover-fact-text">The Moon's gravity is only about 1/6 of Earth's.</p>
-            </div>
-            <div class="gameover-buttons">
-              <button id="btn-play-again" class="btn btn-primary">
-                <i class="fa-solid fa-rotate-right"></i> Play Again
-              </button>
-              <button id="btn-gameover-menu" class="btn btn-secondary">
-                <i class="fa-solid fa-house"></i> Main Menu
-              </button>
-            </div>
-          </div>
         </div>
-
       </section>
 
-      <!-- Mobile On-Screen Controls -->
-      <button class="mobile-btn mobile-reverse-btn" id="btn-reverse-gravity" aria-label="Reverse Gravity">
-        <i class="fa-solid fa-arrow-up-down"></i>
-        <span>REVERSE GRAVITY</span>
-      </button>
+      <!-- Mobile Virtual Gamepad Controls -->
+      <div class="mobile-controls-panel" id="mobile-controls-panel">
+        <!-- D-Pad Directional Movement Controls -->
+        <div class="mobile-dpad">
+          <button class="mobile-ctrl-btn dpad-up" id="btn-mobile-up" aria-label="Jump / Up">
+            <i class="fa-solid fa-arrow-up"></i>
+          </button>
+          <div class="dpad-middle-row">
+            <button class="mobile-ctrl-btn dpad-left" id="btn-mobile-left" aria-label="Move Left">
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <button class="mobile-ctrl-btn dpad-down" id="btn-mobile-down" aria-label="Move Down">
+              <i class="fa-solid fa-arrow-down"></i>
+            </button>
+            <button class="mobile-ctrl-btn dpad-right" id="btn-mobile-right" aria-label="Move Right">
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action / Reverse Gravity Button -->
+        <div class="mobile-action-group">
+          <button class="mobile-ctrl-btn mobile-reverse-btn" id="btn-reverse-gravity" aria-label="Reverse Gravity">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>REVERSE GRAVITY</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Floating Pause Button -->
       <button class="mobile-btn mobile-pause-btn" id="btn-mobile-pause" aria-label="Pause Game">
         <i class="fa-solid fa-pause"></i>
       </button>

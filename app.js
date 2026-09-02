@@ -1,19 +1,24 @@
 (function() {
   // ==========================================================================
-  // 1. CONSTANTS & CONFIG (CALM, BEGINNER-FRIENDLY BALANCING)
+  // 1. CONSTANTS & FIXED LOGICAL GAME WORLD COORDINATES
   // ==========================================================================
+  const GAME_WIDTH = 1000;
+  const GAME_HEIGHT = 550;
+  const GAME_ASPECT_RATIO = GAME_WIDTH / GAME_HEIGHT; // ~1.818
+
   const PX_PER_METER = 60;
   const DEFAULT_GRAVITY = 9.81;
   const PLAYER_RADIUS = 16;
   const PLAYER_RESTITUTION = 0.65;
-  const PLAYER_MOVE_SPEED = 320;
+  const PLAYER_MOVE_SPEED = 340;
   const PLAYER_JUMP_FORCE = -420;
+  const PLAYER_DOWN_FORCE = 300;
   const CRYSTAL_RADIUS = 11;
   const CRYSTAL_SCORE = 10;
   
   // Relaxed obstacle speeds and generous spawn intervals
-  const OBSTACLE_BASE_SPEED = 120; // Calm, readable speed
-  const BASE_SPAWN_INTERVAL = 4200; // 4.2s initial interval
+  const OBSTACLE_BASE_SPEED = 120;
+  const BASE_SPAWN_INTERVAL = 4200;
   const MAX_PARTICLES = 50;
   const TRAIL_MAX_LENGTH = 18;
   const MOBILE_MAX_PARTICLES = 25;
@@ -27,7 +32,7 @@
     { name: 'Zero Gravity', value: 0.001, color: '#06b6d4' },
     { name: 'Reverse Gravity', value: -9.81, color: '#ec4899' }
   ];
-  const GRAVITY_SHIFT_MIN = 24; // 24-34s between gravity shifts
+  const GRAVITY_SHIFT_MIN = 24;
   const GRAVITY_SHIFT_MAX = 34;
   const GRAVITY_WARNING_TIME = 3;
 
@@ -91,8 +96,6 @@
     }
   };
 
-  const IS_TOUCH_DEVICE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-
   function darkenColor(hex, percent) {
     let num = parseInt(hex.replace('#',''), 16),
         amt = Math.round(2.55 * percent),
@@ -113,6 +116,7 @@
   const SettingsManager = {
     defaults: {
       deviceMode: null,
+      musicEnabled: true,
       musicVolume: 25,
       sfxVolume: 50,
       ballColor: '#00f3ff',
@@ -144,102 +148,114 @@
   };
 
   // ==========================================================================
-  // 3. MUSIC MANAGER (Procedural Relaxing Ambient BGM)
+  // 3. CONTINUOUS APPLICATION-WIDE BACKGROUND MUSIC (ONE PERSISTENT INSTANCE)
   // ==========================================================================
   const MusicManager = {
     ctx: null,
-    gainNode: null,
+    masterGain: null,
     filterNode: null,
     oscillators: [],
     lfo: null,
+    isInitialized: false,
     isPlaying: false,
     
     init() {
-      if (!this.ctx) {
+      if (this.isInitialized) {
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+        return;
+      }
+
+      try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
         this.ctx = new AudioCtx();
-        this.gainNode = this.ctx.createGain();
+        
+        this.masterGain = this.ctx.createGain();
         this.filterNode = this.ctx.createBiquadFilter();
         
         this.filterNode.type = 'lowpass';
         this.filterNode.frequency.value = 280;
         this.filterNode.Q.value = 0.8;
         
-        this.gainNode.gain.value = 0;
-        this.filterNode.connect(this.gainNode);
-        this.gainNode.connect(this.ctx.destination);
+        this.masterGain.gain.value = 0;
+        this.filterNode.connect(this.masterGain);
+        this.masterGain.connect(this.ctx.destination);
+
+        // Soft, ambient space harmonics
+        const freqs = [65.41, 98.0, 130.81]; // C2, G2, C3
+        freqs.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = freq + (i * 0.35);
+          osc.connect(this.filterNode);
+          osc.start();
+          this.oscillators.push(osc);
+        });
+        
+        // Gentle evolving LFO
+        this.lfo = this.ctx.createOscillator();
+        this.lfo.type = 'sine';
+        this.lfo.frequency.value = 0.07;
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.value = 75;
+        this.lfo.connect(lfoGain);
+        lfoGain.connect(this.filterNode.frequency);
+        this.lfo.start();
+        
+        this.isInitialized = true;
+        this.updateVolume();
+      } catch(e) {}
+    },
+
+    updateVolume() {
+      if (!this.masterGain || !this.ctx) return;
+      const isEnabled = SettingsManager.get('musicEnabled') !== false;
+      const volSetting = SettingsManager.get('musicVolume') !== undefined ? SettingsManager.get('musicVolume') : 25;
+      
+      let targetGain = 0;
+      if (isEnabled && volSetting > 0) {
+        targetGain = (volSetting / 100) * 0.12;
       }
-      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      
+      this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.1);
+      this.isPlaying = targetGain > 0;
     },
-    
-    setVolume(vol) {
-      if (!this.gainNode || !this.ctx) return;
-      const mappedVol = (vol / 100) * 0.12;
-      this.gainNode.gain.setTargetAtTime(mappedVol, this.ctx.currentTime, 0.1);
-    },
-    
-    startMusic(isMenu = false) {
+
+    start() {
       this.init();
-      if (!this.ctx) return;
-      if (this.isPlaying) this.stopMusic(true);
-      this.isPlaying = true;
-      
-      const freqs = [65.41, 98.0, 130.81]; // Soft C-G ambient chords
-      freqs.forEach((freq, i) => {
-        const osc = this.ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = freq + (i * 0.4);
-        osc.connect(this.filterNode);
-        osc.start();
-        this.oscillators.push(osc);
-      });
-      
-      this.lfo = this.ctx.createOscillator();
-      this.lfo.type = 'sine';
-      this.lfo.frequency.value = 0.08;
-      
-      const lfoGain = this.ctx.createGain();
-      lfoGain.gain.value = 80;
-      this.lfo.connect(lfoGain);
-      lfoGain.connect(this.filterNode.frequency);
-      this.lfo.start();
-      
-      const volSetting = SettingsManager.get('musicVolume') || 25;
-      const targetVol = isMenu ? (volSetting / 100) * 0.04 : (volSetting / 100) * 0.12;
-      this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + 1.8);
-    },
-    
-    startMenuMusic() { this.startMusic(true); },
-    startGameMusic() { this.startMusic(false); },
-    
-    stopMusic(immediate = false) {
-      if (!this.isPlaying || !this.ctx || !this.gainNode) return;
-      this.isPlaying = false;
-      
-      this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
-      if (immediate) {
-        this.gainNode.gain.value = 0;
-        this.cleanupOscillators();
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().then(() => this.updateVolume()).catch(() => {});
       } else {
-        this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, this.ctx.currentTime);
-        this.gainNode.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.8);
-        setTimeout(() => this.cleanupOscillators(), 850);
+        this.updateVolume();
       }
     },
-    
-    cleanupOscillators() {
-      this.oscillators.forEach(osc => {
-        try { osc.stop(); osc.disconnect(); } catch(e) {}
-      });
-      this.oscillators = [];
-      if (this.lfo) {
-        try { this.lfo.stop(); this.lfo.disconnect(); } catch(e) {}
-        this.lfo = null;
-      }
+
+    setVolume(vol) {
+      SettingsManager.set('musicVolume', vol);
+      this.updateVolume();
+    },
+
+    toggle() {
+      const current = SettingsManager.get('musicEnabled') !== false;
+      SettingsManager.set('musicEnabled', !current);
+      this.updateVolume();
+      return !current;
     }
   };
+
+  // Start continuous music upon first user interaction
+  const triggerAudioStart = () => {
+    AudioManager.init();
+    MusicManager.start();
+    window.removeEventListener('click', triggerAudioStart);
+    window.removeEventListener('keydown', triggerAudioStart);
+    window.removeEventListener('touchstart', triggerAudioStart);
+  };
+  window.addEventListener('click', triggerAudioStart, { once: false });
+  window.addEventListener('keydown', triggerAudioStart, { once: false });
+  window.addEventListener('touchstart', triggerAudioStart, { once: false, passive: true });
 
   // ==========================================================================
   // 4. AUDIO MANAGER (Procedural Sound FX with SFX Volume)
@@ -251,10 +267,10 @@
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) this.ctx = new AudioCtx();
       }
-      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     },
     getSFXVolume() {
-      return (SettingsManager.get('sfxVolume') || 50) / 100;
+      return (SettingsManager.get('sfxVolume') !== undefined ? SettingsManager.get('sfxVolume') : 50) / 100;
     },
     playOscillator(type, freqStart, freqEnd, duration, volume = 0.1) {
       if (!this.ctx) return;
@@ -292,7 +308,6 @@
     },
     playGameOver() {
       if (!this.ctx || this.getSFXVolume() <= 0) return;
-      // Funny descending trombone "wah-wah-wah-waaah"
       const notes = [320, 300, 280, 240];
       notes.forEach((freq, idx) => {
         setTimeout(() => {
@@ -302,7 +317,6 @@
     },
     playHighScore() {
       if (!this.ctx || this.getSFXVolume() <= 0) return;
-      // Cheerful ascending arpeggio
       const notes = [523, 659, 784, 1047];
       notes.forEach((f, i) => {
         setTimeout(() => this.playOscillator('sine', f, f + 50, 0.14, 0.12), i * 90);
@@ -352,7 +366,7 @@
   }
 
   // ==========================================================================
-  // 6. PLAYER CLASS
+  // 6. PLAYER CLASS (STRICT BOUNDARIES CLAMPED IN LOGICAL WORLD)
   // ==========================================================================
   class Player {
     constructor(x, y, radius, color, restitution) {
@@ -369,14 +383,20 @@
       this.isGrounded = false;
     }
 
-    update(dt, width, height, gravity, inputDirection) {
+    update(dt, width, height, gravity, inputX, inputY) {
       if (!this.isAlive) return;
       
       const gravityAcc = gravity * PX_PER_METER;
       this.vy += gravityAcc * dt;
       
-      this.vx += inputDirection * PLAYER_MOVE_SPEED * dt;
+      // Horizontal movement
+      this.vx += inputX * PLAYER_MOVE_SPEED * dt;
       this.vx *= 0.92;
+      
+      // Downward direct movement (Down Arrow / S / Mobile Down)
+      if (inputY > 0) {
+        this.vy += inputY * PLAYER_DOWN_FORCE * dt;
+      }
       
       this.x += this.vx * dt;
       this.y += this.vy * dt;
@@ -393,8 +413,8 @@
       const bounceFriction = 0.992;
       this.isGrounded = false;
       
-      // Floor collision
-      if (this.y + this.radius > height) {
+      // Floor collision & hard clamping
+      if (this.y + this.radius >= height) {
         this.y = height - this.radius;
         this.vy = -this.vy * this.restitution;
         this.vx *= bounceFriction;
@@ -404,8 +424,8 @@
         }
       }
       
-      // Ceiling collision
-      if (this.y - this.radius < 0) {
+      // Ceiling collision & hard clamping
+      if (this.y - this.radius <= 0) {
         this.y = this.radius;
         this.vy = -this.vy * this.restitution;
         this.vx *= bounceFriction;
@@ -415,7 +435,7 @@
         }
       }
       
-      // Left and right bounds
+      // Left and right hard boundaries (BALL CAN NEVER LEAVE PLAYABLE AREA)
       if (this.x - this.radius < 0) {
         this.x = this.radius;
         this.vx = -this.vx * this.restitution;
@@ -494,7 +514,7 @@
       this.speed = speed;
       this.type = type;
       this.onFloor = onFloor;
-      this.warningTimer = (type === 'laser') ? 1.8 : 0; // 1.8s laser warning
+      this.warningTimer = (type === 'laser') ? 1.8 : 0;
       this.active = (type !== 'laser');
       this.warningPlayed = false;
     }
@@ -506,15 +526,13 @@
     const now = performance.now();
     const timeSurvived = GameManager.difficultyTimer;
 
-    // Laser spawning rule:
-    // Only allowed after 35 seconds of survival, with minimum 16s cooldown between lasers
     const canSpawnLaser = (timeSurvived >= 35) && (now - lastLaserTime > 16000);
     
     let type;
     if (canSpawnLaser && Math.random() < 0.26) {
       type = 'laser';
       lastLaserTime = now;
-      safeSpawnGraceTimer = 2.4; // Grace delay on regular obstacles while laser is preparing/firing
+      safeSpawnGraceTimer = 2.4;
     } else {
       type = (Math.random() < 0.55) ? 'spike' : 'block';
     }
@@ -522,7 +540,7 @@
     const speed = OBSTACLE_BASE_SPEED * multiplier;
 
     if (type === 'laser') {
-      const y = 50 + Math.random() * (canvasHeight - 110);
+      const y = 60 + Math.random() * (canvasHeight - 130);
       obstacles.push(new Obstacle(0, y, canvasWidth, 12, 0, 'laser'));
     } else if (type === 'spike') {
       const onFloor = Math.random() < 0.55;
@@ -535,9 +553,9 @@
       const blockH = 32;
       const blockW = 32;
       let y;
-      if (loc < 0.45) y = canvasHeight - blockH; // floor
-      else if (loc < 0.85) y = 0; // ceiling
-      else y = canvasHeight / 2 - blockH / 2; // mid lane
+      if (loc < 0.45) y = canvasHeight - blockH;
+      else if (loc < 0.85) y = 0;
+      else y = canvasHeight / 2 - blockH / 2;
       obstacles.push(new Obstacle(canvasWidth + 15, y, blockW, blockH, speed, 'block'));
     }
   }
@@ -571,7 +589,6 @@
     obstacles.forEach(obs => {
       if (obs.type === 'laser') {
         if (obs.warningTimer > 0) {
-          // Blinking warning indicator with glow and directional arrows
           if (Math.floor(obs.warningTimer * 5) % 2 === 0) {
             ctx.strokeStyle = '#ff007c';
             ctx.setLineDash([8, 8]);
@@ -585,7 +602,7 @@
             ctx.setLineDash([]);
             ctx.shadowBlur = 0;
             
-            // Left & Right warning arrows
+            // Left & Right warning indicators
             ctx.fillStyle = '#ff007c';
             ctx.beginPath();
             ctx.moveTo(0, obs.y);
@@ -600,7 +617,6 @@
             ctx.fill();
           }
         } else if (obs.active) {
-          // Lethal active laser beam
           ctx.fillStyle = '#ff007c';
           ctx.shadowBlur = 16;
           ctx.shadowColor = '#ff007c';
@@ -750,7 +766,7 @@
       this.planets = [];
       this.shootingStars = [];
       
-      const starCount = DeviceManager.isAndroid() ? 70 : 120;
+      const starCount = 100;
       for (let i = 0; i < starCount; i++) {
         this.stars.push({
           x: Math.random() * width,
@@ -803,7 +819,6 @@
         if (neb.x > width + neb.radius) neb.x = -neb.radius;
       });
 
-      // Random shooting stars
       if (Math.random() < 0.008 && this.shootingStars.length < 2) {
         this.shootingStars.push({
           x: Math.random() * width,
@@ -951,7 +966,10 @@
       colorPreview: document.getElementById('color-preview'),
       themeGrid: document.getElementById('theme-grid'),
       highscoresList: document.getElementById('highscores-list'),
-      appHeader: document.getElementById('app-header')
+      appHeader: document.getElementById('app-header'),
+      musicToggleBtn: document.getElementById('btn-toggle-music'),
+      musicToggleIcon: document.getElementById('music-toggle-icon'),
+      musicToggleText: document.getElementById('music-toggle-text')
     },
     notifTimeout: null,
 
@@ -1055,12 +1073,21 @@
     },
     updateSettingsUI() {
       if (this.els.settingsMusicVolume) {
-        const mVol = SettingsManager.get('musicVolume') || 25;
+        const mVol = SettingsManager.get('musicVolume') !== undefined ? SettingsManager.get('musicVolume') : 25;
         this.els.settingsMusicVolume.value = mVol;
         if (this.els.settingsMusicValue) this.els.settingsMusicValue.textContent = `${mVol}%`;
       }
+      if (this.els.musicToggleBtn) {
+        const isEnabled = SettingsManager.get('musicEnabled') !== false;
+        if (this.els.musicToggleIcon) {
+          this.els.musicToggleIcon.className = isEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+        }
+        if (this.els.musicToggleText) {
+          this.els.musicToggleText.textContent = isEnabled ? 'Music: ON' : 'Music: OFF';
+        }
+      }
       if (this.els.settingsSfxVolume) {
-        const sVol = SettingsManager.get('sfxVolume') || 50;
+        const sVol = SettingsManager.get('sfxVolume') !== undefined ? SettingsManager.get('sfxVolume') : 50;
         this.els.settingsSfxVolume.value = sVol;
         if (this.els.settingsSfxValue) this.els.settingsSfxValue.textContent = `${sVol}%`;
       }
@@ -1100,7 +1127,7 @@
     const cx = w/2, cy = h/2, r = w * 0.42;
     ctx.clearRect(0, 0, w, h);
 
-    // Yellow face
+    // Face
     const faceGrad = ctx.createRadialGradient(cx-r*0.2, cy-r*0.2, r*0.1, cx, cy, r);
     faceGrad.addColorStop(0, '#ffe066');
     faceGrad.addColorStop(1, '#ffcc00');
@@ -1112,17 +1139,15 @@
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Eyes (Laughing crescent shapes)
+    // Eyes
     ctx.strokeStyle = '#664400';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     
-    // Left eye arc
     ctx.beginPath();
     ctx.arc(cx - r*0.35, cy - r*0.1, r*0.18, Math.PI * 1.1, Math.PI * 1.9);
     ctx.stroke();
 
-    // Right eye arc
     ctx.beginPath();
     ctx.arc(cx + r*0.35, cy - r*0.1, r*0.18, Math.PI * 1.1, Math.PI * 1.9);
     ctx.stroke();
@@ -1138,7 +1163,7 @@
     ctx.quadraticCurveTo(cx + r*0.35, cy - r*0.48, cx + r*0.18, cy - r*0.32);
     ctx.stroke();
 
-    // Huge laughing mouth
+    // Mouth
     ctx.fillStyle = '#8B0000';
     ctx.beginPath();
     ctx.arc(cx, cy + r*0.1, r*0.55, 0.1 * Math.PI, 0.9 * Math.PI, false);
@@ -1148,18 +1173,16 @@
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Teeth row with missing tooth!
+    // Teeth with missing tooth!
     ctx.fillStyle = '#ffffff';
     const teethY = cy + r*0.12;
     const toothW = r * 0.18;
     const toothH = r * 0.16;
     
-    // Left tooth
     ctx.beginPath();
     ctx.roundRect(cx - toothW * 1.1, teethY, toothW, toothH, 2);
     ctx.fill();
 
-    // Right side: Missing tooth gap (dark background), then another tooth
     ctx.beginPath();
     ctx.roundRect(cx + toothW * 0.5, teethY, toothW, toothH, 2);
     ctx.fill();
@@ -1220,7 +1243,7 @@
         UIManager.showGravityNotification(`${mode.name.toUpperCase()} ACTIVATED`);
         AudioManager.playReverse();
         
-        safeSpawnGraceTimer = 2.0; // Grace period right after shift!
+        safeSpawnGraceTimer = 2.0;
 
         if (GameManager.player) {
           spawnParticles(GameManager.player.x, GameManager.player.y, 16, mode.color, 50);
@@ -1252,11 +1275,22 @@
       this.mode = mode;
       SettingsManager.set('deviceMode', mode);
       this.applyMode(mode);
+      resizeCanvas();
     },
 
     applyMode(mode) {
       document.body.classList.remove('device-pc', 'device-android');
       document.body.classList.add(`device-${mode}`);
+      
+      const controlsPanel = document.getElementById('mobile-controls-panel');
+      const pauseBtn = document.getElementById('btn-mobile-pause');
+      if (mode === 'android') {
+        if (controlsPanel) controlsPanel.style.display = 'flex';
+        if (pauseBtn) pauseBtn.style.display = 'inline-flex';
+      } else {
+        if (controlsPanel) controlsPanel.style.display = 'none';
+        if (pauseBtn) pauseBtn.style.display = 'none';
+      }
     },
 
     isPC() { return this.mode === 'pc'; },
@@ -1264,7 +1298,7 @@
   };
 
   // ==========================================================================
-  // 15. GAME MANAGER (State Machine & Main Game Loop)
+  // 15. GAME MANAGER (PROPORTIONAL SCALING & LOGICAL WORLD)
   // ==========================================================================
   const GameManager = {
     state: 'DEVICE_SELECT',
@@ -1275,12 +1309,16 @@
     gravity: DEFAULT_GRAVITY,
     canvas: document.getElementById('game-canvas'),
     ctx: null,
-    logicalWidth: 920,
-    logicalHeight: 480,
+    
+    // Fixed logical game world resolution (NEVER CROPPED)
+    worldWidth: GAME_WIDTH,
+    worldHeight: GAME_HEIGHT,
     
     init() {
       this.ctx = this.canvas.getContext('2d');
       window.addEventListener('resize', resizeCanvas);
+      
+      SpaceRenderer.init(this.worldWidth, this.worldHeight);
       resizeCanvas();
       
       if (!DeviceManager.init()) {
@@ -1297,7 +1335,7 @@
       ScoreManager.reset();
       
       const ballColor = SettingsManager.get('ballColor') || '#00f3ff';
-      this.player = new Player(this.logicalWidth * 0.25, this.logicalHeight * 0.5, PLAYER_RADIUS, ballColor, PLAYER_RESTITUTION);
+      this.player = new Player(this.worldWidth * 0.25, this.worldHeight * 0.5, PLAYER_RADIUS, ballColor, PLAYER_RESTITUTION);
       DynamicGravity.reset();
       
       obstacles = [];
@@ -1322,14 +1360,7 @@
           clearInterval(countInt);
           this.state = 'PLAYING';
           UIManager.hideAllScreens();
-          if (DeviceManager.isAndroid()) {
-            const revBtn = document.getElementById('btn-reverse-gravity');
-            const pBtn = document.getElementById('btn-mobile-pause');
-            if (revBtn) revBtn.style.display = 'inline-flex';
-            if (pBtn) pBtn.style.display = 'inline-flex';
-          }
           AudioManager.playGameStart();
-          MusicManager.startGameMusic();
         }
       }, 1000);
     },
@@ -1351,16 +1382,8 @@
     gameOver() {
       this.state = 'GAME_OVER';
       if (this.player) this.player.isAlive = false;
-      spawnParticles(this.player ? this.player.x : this.logicalWidth/2, this.player ? this.player.y : this.logicalHeight/2, 35, '#ff007c', 160);
+      spawnParticles(this.player ? this.player.x : this.worldWidth/2, this.player ? this.player.y : this.worldHeight/2, 35, '#ff007c', 160);
       AudioManager.playCollision();
-      MusicManager.stopMusic();
-      
-      if (DeviceManager.isAndroid()) {
-        const revBtn = document.getElementById('btn-reverse-gravity');
-        const pBtn = document.getElementById('btn-mobile-pause');
-        if (revBtn) revBtn.style.display = 'none';
-        if (pBtn) pBtn.style.display = 'none';
-      }
       
       UIManager.triggerScreenShake();
       ScoreManager.saveHighScore();
@@ -1374,24 +1397,11 @@
       UIManager.showScreen('menu');
       UIManager.updateMenuFacts();
       
-      if (DeviceManager.isAndroid()) {
-        const revBtn = document.getElementById('btn-reverse-gravity');
-        const pBtn = document.getElementById('btn-mobile-pause');
-        if (revBtn) revBtn.style.display = 'none';
-        if (pBtn) pBtn.style.display = 'none';
-      }
-      
       UIManager.updateScore(0);
       UIManager.updateHighScore(SettingsManager.getHighScore());
-      MusicManager.startMenuMusic();
     },
     
     getDifficultyMultiplier() {
-      // Gentle progression curve
-      // 0-20s: 1.0 (Very Easy)
-      // 20-40s: 1.12 (Easy)
-      // 40-60s: 1.25 (Normal)
-      // 60s+: Capped at 1.45 max (Challenging, but fair)
       if (this.difficultyTimer < 20) return 1.0;
       if (this.difficultyTimer < 40) return 1.0 + (this.difficultyTimer - 20) * 0.006;
       if (this.difficultyTimer < 60) return 1.12 + (this.difficultyTimer - 40) * 0.0065;
@@ -1419,28 +1429,33 @@
       this.crystalSpawnTimer += dt * 1000;
       
       DynamicGravity.update(dt);
-      SpaceRenderer.update(dt, this.logicalWidth, this.logicalHeight);
+      SpaceRenderer.update(dt, this.worldWidth, this.worldHeight);
       
-      let inputDir = 0;
-      if (keys['ArrowLeft'] || keys['KeyA'] || keys['TouchLeft']) inputDir -= 1;
-      if (keys['ArrowRight'] || keys['KeyD'] || keys['TouchRight']) inputDir += 1;
+      // Compute input direction from keys and mobile touch states
+      let inputX = 0;
+      if (keys['ArrowLeft'] || keys['KeyA'] || keys['TouchLeft']) inputX -= 1;
+      if (keys['ArrowRight'] || keys['KeyD'] || keys['TouchRight']) inputX += 1;
       
-      if ((keys['ArrowUp'] || keys['KeyW'] || keys['TouchJump']) && this.player && this.player.isGrounded) {
+      let inputY = 0;
+      if (keys['ArrowDown'] || keys['KeyS'] || keys['TouchDown']) inputY += 1;
+      
+      // Jump action
+      if ((keys['ArrowUp'] || keys['KeyW'] || keys['TouchUp']) && this.player && this.player.isGrounded) {
         this.player.vy = (this.gravity > 0) ? PLAYER_JUMP_FORCE : -PLAYER_JUMP_FORCE;
         this.player.isGrounded = false;
       }
       
       if (this.player) {
-        this.player.update(dt, this.logicalWidth, this.logicalHeight, this.gravity, inputDir);
+        this.player.update(dt, this.worldWidth, this.worldHeight, this.gravity, inputX, inputY);
       }
       
       if (this.obstacleSpawnTimer >= this.getSpawnInterval()) {
         this.obstacleSpawnTimer = 0;
-        spawnObstacle(this.logicalWidth, this.logicalHeight, this.getDifficultyMultiplier());
+        spawnObstacle(this.worldWidth, this.worldHeight, this.getDifficultyMultiplier());
       }
       if (this.crystalSpawnTimer >= 3500) {
         this.crystalSpawnTimer = 0;
-        spawnCrystal(this.logicalWidth, this.logicalHeight);
+        spawnCrystal(this.worldWidth, this.worldHeight);
       }
       
       updateObstacles(dt);
@@ -1449,7 +1464,7 @@
       ScoreManager.update(dt);
       UIManager.updateScore(ScoreManager.score);
       
-      // Collision detection
+      // Collision detection (Fair bounding checks in logical world)
       if (this.player && this.player.isAlive) {
         obstacles.forEach(obs => {
           if (!obs.active) return;
@@ -1461,7 +1476,7 @@
             const px = Math.max(obs.x, Math.min(this.player.x, obs.x + obs.width));
             const py = Math.max(obs.y, Math.min(this.player.y, obs.y + obs.height));
             const dist = Math.hypot(this.player.x - px, this.player.y - py);
-            if (dist < this.player.radius * 0.85) { // Fair collision margin
+            if (dist < this.player.radius * 0.85) {
               this.gameOver();
             }
           }
@@ -1481,11 +1496,11 @@
       }
     },
     
-    render(ctx, w, h, dt) {
-      SpaceRenderer.renderGameplay(ctx, w, h, this.player, dt);
+    render(ctx, dt) {
+      SpaceRenderer.renderGameplay(ctx, this.worldWidth, this.worldHeight, this.player, dt);
       if (this.state === 'PLAYING' || this.state === 'PAUSED' || this.state === 'GAME_OVER') {
         renderCrystals(ctx);
-        renderObstacles(ctx, w);
+        renderObstacles(ctx, this.worldWidth);
         if (this.player) this.player.draw(ctx);
         renderParticles(ctx);
       }
@@ -1510,7 +1525,6 @@
       }
     }
     resizeMenuCanvas();
-    SpaceRenderer.init(menuCanvas.width, menuCanvas.height);
     
     UIManager.updateMenuFacts();
     if (!menuFactInterval) {
@@ -1544,7 +1558,7 @@
   }
 
   // ==========================================================================
-  // 17. INPUT HANDLER
+  // 17. INPUT HANDLER (KEYBOARD PC CONTROLS)
   // ==========================================================================
   const keys = {};
   window.addEventListener('keydown', e => {
@@ -1594,8 +1608,8 @@
     }
     
     if (GameManager.ctx) {
-      GameManager.ctx.clearRect(0, 0, GameManager.logicalWidth, GameManager.logicalHeight);
-      GameManager.render(GameManager.ctx, GameManager.logicalWidth, GameManager.logicalHeight, dt);
+      GameManager.ctx.clearRect(0, 0, GameManager.worldWidth, GameManager.worldHeight);
+      GameManager.render(GameManager.ctx, dt);
       
       if (GameManager.state === 'PLAYING') {
         GameManager.update(dt);
@@ -1709,15 +1723,22 @@
     GameManager.returnToMenu();
   });
 
-  // Settings Events
+  // Music ON/OFF Button Toggle
+  safeAddListener('btn-toggle-music', 'click', () => {
+    AudioManager.init();
+    AudioManager.playClick();
+    MusicManager.toggle();
+    UIManager.updateSettingsUI();
+  });
+
+  // Settings Volume Sliders
   const musicSlider = document.getElementById('settings-music-volume');
   if (musicSlider) {
     musicSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
-      SettingsManager.set('musicVolume', val);
+      MusicManager.setVolume(val);
       const valDisplay = document.getElementById('settings-music-value');
       if (valDisplay) valDisplay.textContent = `${val}%`;
-      MusicManager.setVolume(val);
     });
   }
 
@@ -1759,32 +1780,59 @@
   }
 
   // ==========================================================================
-  // 20. MOBILE CONTROLS & TOUCH HANDLING
+  // 20. MOBILE VIRTUAL GAMEPAD (COMPLETE TOUCH CONTROLS WITH CONTINUOUS HOLD)
   // ==========================================================================
-  const mobileReverseBtn = document.getElementById('btn-reverse-gravity');
-  const mobilePauseBtn = document.getElementById('btn-mobile-pause');
-  const orientationHint = document.getElementById('orientation-hint');
-  const orientationDismiss = document.getElementById('orientation-dismiss');
+  function bindTouchButton(elementId, keyName, isAction = false, actionCallback = null) {
+    const btn = document.getElementById(elementId);
+    if (!btn) return;
 
-  if (mobileReverseBtn) {
-    mobileReverseBtn.addEventListener('touchstart', function(e) {
+    const startHandler = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (GameManager.state === 'PLAYING') {
-        AudioManager.init();
-        GameManager.reverseGravity();
+      btn.classList.add('active');
+      AudioManager.init();
+      MusicManager.init();
+
+      if (isAction && actionCallback) {
+        actionCallback();
+      } else if (keyName) {
+        keys[keyName] = true;
       }
-    }, { passive: false });
-    
-    mobileReverseBtn.addEventListener('click', function(e) {
+    };
+
+    const endHandler = (e) => {
       e.preventDefault();
-      if (GameManager.state === 'PLAYING') {
-        AudioManager.init();
-        GameManager.reverseGravity();
+      btn.classList.remove('active');
+      if (keyName) {
+        keys[keyName] = false;
       }
-    });
+    };
+
+    btn.addEventListener('touchstart', startHandler, { passive: false });
+    btn.addEventListener('touchend', endHandler, { passive: false });
+    btn.addEventListener('touchcancel', endHandler, { passive: false });
+    
+    // Mouse fallbacks for desktop testing
+    btn.addEventListener('mousedown', startHandler);
+    btn.addEventListener('mouseup', endHandler);
+    btn.addEventListener('mouseleave', endHandler);
   }
 
+  // Directional D-Pad buttons
+  bindTouchButton('btn-mobile-left', 'TouchLeft');
+  bindTouchButton('btn-mobile-right', 'TouchRight');
+  bindTouchButton('btn-mobile-up', 'TouchUp');
+  bindTouchButton('btn-mobile-down', 'TouchDown');
+
+  // Main Reverse Gravity button
+  bindTouchButton('btn-reverse-gravity', null, true, () => {
+    if (GameManager.state === 'PLAYING') {
+      GameManager.reverseGravity();
+    }
+  });
+
+  // Mobile pause button
+  const mobilePauseBtn = document.getElementById('btn-mobile-pause');
   if (mobilePauseBtn) {
     mobilePauseBtn.addEventListener('touchstart', function(e) {
       e.preventDefault();
@@ -1804,62 +1852,15 @@
     });
   }
 
-  // Multi-zone Touch Navigation & Tap-to-Reverse
-  let activeTouches = {};
-  function getTouchAction(touch) {
-    const x = touch.clientX;
-    const y = touch.clientY;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    
-    // Ignore top-right pause and bottom reverse button areas
-    if (x > w - 60 && y < 100) return null;
-    if (y > h - 70) return null;
-
-    if (x < w * 0.3) return 'left';
-    if (x > w * 0.7) return 'right';
-    return 'reverse'; // Tapping middle reverses gravity
-  }
-
-  function updateTouchKeys() {
-    keys['TouchLeft'] = false;
-    keys['TouchRight'] = false;
-    for (const id in activeTouches) {
-      const act = activeTouches[id];
-      if (act === 'left') keys['TouchLeft'] = true;
-      if (act === 'right') keys['TouchRight'] = true;
-    }
-  }
-
-  const gameViewport = document.querySelector('.game-viewport');
+  // Tap-on-canvas also flips gravity on mobile if in playing state
+  const gameViewport = document.getElementById('game-viewport');
   if (gameViewport) {
     gameViewport.addEventListener('touchstart', function(e) {
       if (GameManager.state !== 'PLAYING') return;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        const action = getTouchAction(touch);
-        if (action === 'reverse') {
-          AudioManager.init();
-          GameManager.reverseGravity();
-        } else if (action) {
-          activeTouches[touch.identifier] = action;
-        }
-      }
-      updateTouchKeys();
-    }, { passive: true });
-
-    gameViewport.addEventListener('touchend', function(e) {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        delete activeTouches[e.changedTouches[i].identifier];
-      }
-      updateTouchKeys();
-    }, { passive: true });
-
-    gameViewport.addEventListener('touchcancel', function(e) {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        delete activeTouches[e.changedTouches[i].identifier];
-      }
-      updateTouchKeys();
+      // If touch is not inside a button
+      if (e.target.closest('button')) return;
+      AudioManager.init();
+      GameManager.reverseGravity();
     }, { passive: true });
   }
 
@@ -1867,8 +1868,11 @@
   // 21. ORIENTATION HINT
   // ==========================================================================
   let orientationDismissed = false;
+  const orientationHint = document.getElementById('orientation-hint');
+  const orientationDismiss = document.getElementById('orientation-dismiss');
+
   function checkOrientation() {
-    if (!DeviceManager.isAndroid() || orientationDismissed) return;
+    if (!DeviceManager.isAndroid() || orientationDismissed || !orientationHint) return;
     const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
     if (isPortrait) orientationHint.classList.add('visible');
     else orientationHint.classList.remove('visible');
@@ -1877,14 +1881,18 @@
   if (orientationDismiss) {
     orientationDismiss.addEventListener('click', function() {
       orientationDismissed = true;
-      orientationHint.classList.add('dismissed');
-      orientationHint.classList.remove('visible');
+      if (orientationHint) {
+        orientationHint.classList.add('dismissed');
+        orientationHint.classList.remove('visible');
+      }
     });
     orientationDismiss.addEventListener('touchstart', function(e) {
       e.preventDefault();
       orientationDismissed = true;
-      orientationHint.classList.add('dismissed');
-      orientationHint.classList.remove('visible');
+      if (orientationHint) {
+        orientationHint.classList.add('dismissed');
+        orientationHint.classList.remove('visible');
+      }
     }, { passive: false });
   }
 
@@ -1902,33 +1910,54 @@
   });
 
   // ==========================================================================
-  // 22. CANVAS RESIZE (ACCURATE LOGICAL SCALING)
+  // 22. PROPORTIONAL ASPECT-RATIO RESIZE (FIXES PC & MOBILE CROPPING COMPLETELY)
   // ==========================================================================
   function resizeCanvas() {
-    if (!GameManager.canvas || !GameManager.canvas.parentElement) return;
+    const container = document.getElementById('game-viewport-container');
+    const viewport = document.getElementById('game-viewport');
+    if (!container || !viewport || !GameManager.canvas) return;
+
+    // Available space inside main container
+    const availWidth = container.clientWidth || window.innerWidth;
+    const availHeight = container.clientHeight || (window.innerHeight - 80);
+
+    // Calculate display scale preserving 1000:550 aspect ratio without clipping
+    let targetWidth, targetHeight;
+
+    if (DeviceManager.isAndroid()) {
+      // Android mobile viewport constrained proportionally
+      const maxW = Math.min(availWidth - 12, 650);
+      const maxH = Math.min(availHeight - 80, 360);
+      const scale = Math.min(maxW / GAME_WIDTH, maxH / GAME_HEIGHT);
+      targetWidth = Math.round(GAME_WIDTH * scale);
+      targetHeight = Math.round(GAME_HEIGHT * scale);
+    } else {
+      // PC arcade viewport constrained proportionally up to 960x528
+      const maxW = Math.min(availWidth - 32, 960);
+      const maxH = Math.min(availHeight - 32, 528);
+      const scale = Math.min(maxW / GAME_WIDTH, maxH / GAME_HEIGHT);
+      targetWidth = Math.round(GAME_WIDTH * scale);
+      targetHeight = Math.round(GAME_HEIGHT * scale);
+    }
+
+    // Set CSS display dimensions on viewport
+    viewport.style.width = targetWidth + 'px';
+    viewport.style.height = targetHeight + 'px';
+
+    // Canvas internal buffer matches fixed logical world resolution (with DPR sharpness)
     const dpr = window.devicePixelRatio || 1;
-    const w = GameManager.canvas.parentElement.clientWidth || 920;
-    const h = GameManager.canvas.parentElement.clientHeight || 480;
-    
-    GameManager.logicalWidth = w;
-    GameManager.logicalHeight = h;
-    
-    GameManager.canvas.width = Math.round(w * dpr);
-    GameManager.canvas.height = Math.round(h * dpr);
-    GameManager.canvas.style.width = w + 'px';
-    GameManager.canvas.style.height = h + 'px';
-    
+    GameManager.canvas.width = Math.round(GAME_WIDTH * dpr);
+    GameManager.canvas.height = Math.round(GAME_HEIGHT * dpr);
+    GameManager.canvas.style.width = targetWidth + 'px';
+    GameManager.canvas.style.height = targetHeight + 'px';
+
+    // Scale canvas context to map logical 1000x550 coordinates to high-DPI buffer
     GameManager.ctx.setTransform(1, 0, 0, 1, 0, 0);
     GameManager.ctx.scale(dpr, dpr);
-    
-    Object.defineProperty(GameManager.canvas, 'clientWidth', { value: w, configurable: true });
-    Object.defineProperty(GameManager.canvas, 'clientHeight', { value: h, configurable: true });
-    
-    SpaceRenderer.init(w, h);
   }
 
   // ==========================================================================
-  // 23. INITIALIZATION
+  // 23. INITIALIZATION ORDER
   // ==========================================================================
   SettingsManager.init();
   SpaceRenderer.setTheme(SettingsManager.get('theme') || 'deep-space');
