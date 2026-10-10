@@ -45,10 +45,14 @@
     "The force of gravity gets weaker the farther apart two objects are.",
     "Isaac Newton was the first to formulate a law of universal gravitation.",
     "Albert Einstein's general theory of relativity describes gravity as a curve in spacetime.",
-    "You would weigh less on Mars because it has less mass than Earth.",
+    "You would weigh less on Mars because it has about 38% of Earth's gravity.",
     "Gravity is responsible for the ocean tides.",
     "Gravity travels at the speed of light.",
-    "Microgravity in space makes astronauts float, but they are actually in continuous freefall."
+    "Microgravity in space makes astronauts float, but they are actually in continuous freefall.",
+    "A person weighing 68 kg on Earth would weigh only about 11 kg on the Moon.",
+    "Gravitational waves were first detected in 2015 by the LIGO experiment.",
+    "On the surface of a neutron star, gravity is about 2 billion times stronger than on Earth.",
+    "The concept of zero gravity doesn't truly exist — there's always some gravitational force acting."
   ];
 
   const SPACE_FACTS = [
@@ -59,14 +63,36 @@
     "Venus rotates so slowly that a day on Venus is longer than its year.",
     "Saturn could float in water because it is mostly made of gas.",
     "The footprints on the Moon will be there for 100 million years.",
-    "Space is completely silent because there is no air to carry sound."
+    "Space is completely silent because there is no air to carry sound.",
+    "Mercury is the closest planet to the Sun, but Venus is the hottest due to its thick atmosphere.",
+    "Mars has the largest volcano in the solar system: Olympus Mons.",
+    "One million Earths could fit inside the Sun.",
+    "A day on Mercury lasts 59 Earth days.",
+    "Astronauts grow up to 2 inches taller in space because of spinal decompression.",
+    "Neptune has winds that blow faster than the speed of sound.",
+    "The Milky Way galaxy contains an estimated 100–400 billion stars.",
+    "There are more trees on Earth than stars in the Milky Way.",
+    "The Sun makes up 99.86% of all mass in our solar system.",
+    "It rains diamonds on Jupiter and Saturn due to extreme pressure.",
+    "A year on Pluto is equivalent to 248 Earth years.",
+    "The nearest star to Earth after the Sun is Proxima Centauri, about 4.24 light years away.",
+    "Astronauts on the ISS see 16 sunrises and 16 sunsets every day.",
+    "The largest known star, UY Scuti, is about 1,700 times larger than the Sun.",
+    "Earth's core is as hot as the surface of the Sun — about 5,500°C."
   ];
 
   const SHAHRIAR_FACTS = [
-    "Random Fact: Shahriar ekjon bhalo chele, ar or kono girlfriend nai :')",
+    "Shahriar ekjon bhalo chele. Ar or kono girlfriend nai. :')",
     "Shahriar er most favourite dessert dish Custard",
     "Shahriar er best friends holo AJFS",
-    "Shahriar ei game ta hudai banaise"
+    "Shahriar ei game ta hudai banaise",
+    "Jitu, Fahim ke dekhte pare na.",
+    "Shahriar er ekta jento meye dorkar GF hishebe.",
+    "Shahriar CGPA high emon manushder dekhte pare na.",
+    "Sabit dudh intolerant.",
+    "Omayer er duti boro-boro mon royechhe.",
+    "Urmi ekta bhalo meye.",
+    "Anika mohashoy bolilen- Nehi bol payi, bas nehi bol payi."
   ];
 
   const THEMES = {
@@ -956,8 +982,8 @@
       goFact: document.getElementById('gameover-fact-text'),
       goNewHs: document.getElementById('gameover-new-hs'),
       scorePopups: document.getElementById('score-popups'),
-      menuFactText: document.getElementById('menu-fact-text'),
-      menuShahriarFact: document.getElementById('menu-shahriar-fact'),
+      scienceFactText: document.getElementById('science-fact-text'),
+      shahriarFactText: document.getElementById('shahriar-fact-text'),
       settingsMusicVolume: document.getElementById('settings-music-volume'),
       settingsSfxVolume: document.getElementById('settings-sfx-volume'),
       settingsMusicValue: document.getElementById('settings-music-value'),
@@ -1105,14 +1131,57 @@
         });
       }
     },
+    // --- Independent fact state tracking (no-repeat) ---
+    _lastScienceFactIdx: -1,
+    _lastShahriarFactIdx: -1,
+
+    _pickRandomNoRepeat(arr, lastIdx) {
+      if (arr.length <= 1) return 0;
+      let idx;
+      do {
+        idx = Math.floor(Math.random() * arr.length);
+      } while (idx === lastIdx);
+      return idx;
+    },
+
+    updateScienceFact(animate = false) {
+      const allScience = [...GRAVITY_FACTS, ...SPACE_FACTS];
+      const idx = this._pickRandomNoRepeat(allScience, this._lastScienceFactIdx);
+      this._lastScienceFactIdx = idx;
+      const text = allScience[idx];
+      const el = this.els.scienceFactText;
+      if (!el) return;
+      if (animate) {
+        el.classList.add('fade-out');
+        setTimeout(() => {
+          el.textContent = text;
+          el.classList.remove('fade-out');
+        }, 200);
+      } else {
+        el.textContent = text;
+      }
+    },
+
+    updateShahriarFact(animate = false) {
+      const idx = this._pickRandomNoRepeat(SHAHRIAR_FACTS, this._lastShahriarFactIdx);
+      this._lastShahriarFactIdx = idx;
+      const text = SHAHRIAR_FACTS[idx];
+      const el = this.els.shahriarFactText;
+      if (!el) return;
+      if (animate) {
+        el.classList.add('fade-out');
+        setTimeout(() => {
+          el.textContent = text;
+          el.classList.remove('fade-out');
+        }, 200);
+      } else {
+        el.textContent = text;
+      }
+    },
+
     updateMenuFacts() {
-      if (this.els.menuFactText) {
-        const allFacts = [...GRAVITY_FACTS, ...SPACE_FACTS];
-        this.els.menuFactText.textContent = allFacts[Math.floor(Math.random() * allFacts.length)];
-      }
-      if (this.els.menuShahriarFact) {
-        this.els.menuShahriarFact.textContent = SHAHRIAR_FACTS[Math.floor(Math.random() * SHAHRIAR_FACTS.length)];
-      }
+      this.updateScienceFact(false);
+      this.updateShahriarFact(false);
     }
   };
 
@@ -1730,6 +1799,33 @@
     MusicManager.toggle();
     UIManager.updateSettingsUI();
   });
+
+  // --- Clickable Random Fact Cards (Independent) ---
+  const scienceFactBox = document.getElementById('science-fact-box');
+  if (scienceFactBox) {
+    scienceFactBox.addEventListener('click', (e) => {
+      e.preventDefault();
+      AudioManager.init();
+      AudioManager.playClick();
+      UIManager.updateScienceFact(true);
+    });
+    scienceFactBox.addEventListener('touchstart', (e) => {
+      // touchstart fires before click — handled by click via passive
+    }, { passive: true });
+  }
+
+  const shahriarFactBox = document.getElementById('shahriar-fact-box');
+  if (shahriarFactBox) {
+    shahriarFactBox.addEventListener('click', (e) => {
+      e.preventDefault();
+      AudioManager.init();
+      AudioManager.playClick();
+      UIManager.updateShahriarFact(true);
+    });
+    shahriarFactBox.addEventListener('touchstart', (e) => {
+      // touchstart fires before click — handled by click via passive
+    }, { passive: true });
+  }
 
   // Settings Volume Sliders
   const musicSlider = document.getElementById('settings-music-volume');
