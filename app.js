@@ -963,6 +963,7 @@
       highscores: document.getElementById('screen-highscores'),
       countdown: document.getElementById('screen-countdown'),
       pause: document.getElementById('screen-pause'),
+      exitConfirm: document.getElementById('screen-exit-confirm'),
       gameover: document.getElementById('screen-gameover')
     },
     els: {
@@ -995,7 +996,11 @@
       appHeader: document.getElementById('app-header'),
       musicToggleBtn: document.getElementById('btn-toggle-music'),
       musicToggleIcon: document.getElementById('music-toggle-icon'),
-      musicToggleText: document.getElementById('music-toggle-text')
+      musicToggleText: document.getElementById('music-toggle-text'),
+      pauseScore: document.getElementById('pause-score'),
+      pauseHighScore: document.getElementById('pause-highscore'),
+      pcPauseBtn: document.getElementById('btn-pc-pause'),
+      settingsBackToPause: document.getElementById('btn-settings-back-to-pause')
     },
     notifTimeout: null,
 
@@ -1429,45 +1434,105 @@
           clearInterval(countInt);
           this.state = 'PLAYING';
           UIManager.hideAllScreens();
+          this._showPCPauseBtn();
           AudioManager.playGameStart();
         }
       }, 1000);
     },
     
+    // Tracks where to return after closing Settings
+    settingsReturnTo: 'menu', // 'menu' | 'pause'
+
     pauseGame() {
-      if (this.state === 'PLAYING') {
-        this.state = 'PAUSED';
-        UIManager.showScreen('pause');
-      }
+      if (this.state !== 'PLAYING') return;
+      this.state = 'PAUSED';
+      // Freeze all movement keys so player doesn't teleport on resume
+      Object.keys(keys).forEach(k => { keys[k] = false; });
+      // Update pause score display
+      if (UIManager.els.pauseScore) UIManager.els.pauseScore.textContent = ScoreManager.score;
+      if (UIManager.els.pauseHighScore) UIManager.els.pauseHighScore.textContent = SettingsManager.getHighScore();
+      // Hide PC pause btn while paused (it's inside a screen overlay)
+      this._hidePCPauseBtn();
+      UIManager.showScreen('pause');
     },
-    
+
     resumeGame() {
-      if (this.state === 'PAUSED') {
-        this.state = 'PLAYING';
-        UIManager.hideAllScreens();
-      }
+      if (this.state !== 'PAUSED') return;
+      this.state = 'PLAYING';
+      // Freeze all keys again on resume to avoid phantom keypresses
+      Object.keys(keys).forEach(k => { keys[k] = false; });
+      UIManager.hideAllScreens();
+      this._showPCPauseBtn();
     },
-    
+
+    openSettingsFromPause() {
+      this.settingsReturnTo = 'pause';
+      // Show 'Back to Pause' button, hide it on normal settings open
+      if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.remove('hidden');
+      UIManager.showScreen('settings');
+      UIManager.updateSettingsUI();
+    },
+
+    closeSettingsReturnToPause() {
+      this.settingsReturnTo = 'menu';
+      if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
+      this.state = 'PAUSED';
+      if (UIManager.els.pauseScore) UIManager.els.pauseScore.textContent = ScoreManager.score;
+      if (UIManager.els.pauseHighScore) UIManager.els.pauseHighScore.textContent = SettingsManager.getHighScore();
+      UIManager.showScreen('pause');
+    },
+
+    showExitConfirm() {
+      // Keep state as PAUSED; only switch screen
+      UIManager.showScreen('exitConfirm');
+    },
+
+    cancelExit() {
+      // Return to pause menu
+      if (UIManager.els.pauseScore) UIManager.els.pauseScore.textContent = ScoreManager.score;
+      if (UIManager.els.pauseHighScore) UIManager.els.pauseHighScore.textContent = SettingsManager.getHighScore();
+      UIManager.showScreen('pause');
+    },
+
+    confirmExit() {
+      // Treat exit as a loss — run the normal game-over flow
+      this.gameOver();
+    },
+
     gameOver() {
+      if (this.state === 'GAME_OVER') return; // guard: no double trigger
       this.state = 'GAME_OVER';
+      this._hidePCPauseBtn();
       if (this.player) this.player.isAlive = false;
       spawnParticles(this.player ? this.player.x : this.worldWidth/2, this.player ? this.player.y : this.worldHeight/2, 35, '#ff007c', 160);
       AudioManager.playCollision();
-      
+
       UIManager.triggerScreenShake();
       ScoreManager.saveHighScore();
       setTimeout(() => {
         UIManager.showGameOver(ScoreManager.score, SettingsManager.getHighScore(), ScoreManager.timeSurvived, ScoreManager.isNewHighScore);
       }, 750);
     },
-    
+
     returnToMenu() {
       this.state = 'MENU';
+      this.settingsReturnTo = 'menu';
+      this._hidePCPauseBtn();
+      if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
       UIManager.showScreen('menu');
       UIManager.updateMenuFacts();
-      
       UIManager.updateScore(0);
       UIManager.updateHighScore(SettingsManager.getHighScore());
+    },
+
+    _showPCPauseBtn() {
+      if (DeviceManager.isPC() && UIManager.els.pcPauseBtn) {
+        UIManager.els.pcPauseBtn.classList.remove('hidden');
+      }
+    },
+
+    _hidePCPauseBtn() {
+      if (UIManager.els.pcPauseBtn) UIManager.els.pcPauseBtn.classList.add('hidden');
     },
     
     getDifficultyMultiplier() {
@@ -1631,23 +1696,39 @@
   // ==========================================================================
   const keys = {};
   window.addEventListener('keydown', e => {
-    keys[e.code] = true;
+    const activeState = GameManager.state;
+
+    if (e.code === 'Escape') {
+      e.preventDefault();
+      if (activeState === 'PLAYING') {
+        GameManager.pauseGame();
+      } else if (activeState === 'PAUSED') {
+        GameManager.resumeGame();
+      }
+      // ESC while settings is open and we came from pause → back to pause
+      // We detect this via settingsReturnTo flag; state is still PAUSED
+      return;
+    }
+
+    // Only track movement keys while actually playing
+    if (activeState === 'PLAYING') {
+      keys[e.code] = true;
+    }
+
     if (e.code === 'Space') {
-      if (GameManager.state === 'PLAYING') {
+      if (activeState === 'PLAYING') {
         GameManager.reverseGravity();
-      } else if (GameManager.state === 'MENU') {
+        e.preventDefault();
+      } else if (activeState === 'MENU') {
         AudioManager.init();
         GameManager.startGame();
+        e.preventDefault();
       }
-      e.preventDefault();
     }
-    if (e.code === 'Escape') {
-      if (GameManager.state === 'PLAYING') GameManager.pauseGame();
-      else if (GameManager.state === 'PAUSED') GameManager.resumeGame();
-    }
-    if (e.code === 'Enter' && GameManager.state === 'MENU') {
+    if (e.code === 'Enter' && activeState === 'MENU') {
       AudioManager.init();
       GameManager.startGame();
+      e.preventDefault();
     }
   });
 
@@ -1753,11 +1834,23 @@
   
   safeAddListener('btn-close-settings', 'click', () => {
     AudioManager.playClick();
-    GameManager.returnToMenu();
+    if (GameManager.settingsReturnTo === 'pause') {
+      GameManager.closeSettingsReturnToPause();
+    } else {
+      GameManager.returnToMenu();
+    }
   });
   safeAddListener('btn-settings-back', 'click', () => {
     AudioManager.playClick();
-    GameManager.returnToMenu();
+    if (GameManager.settingsReturnTo === 'pause') {
+      GameManager.closeSettingsReturnToPause();
+    } else {
+      GameManager.returnToMenu();
+    }
+  });
+  safeAddListener('btn-settings-back-to-pause', 'click', () => {
+    AudioManager.playClick();
+    GameManager.closeSettingsReturnToPause();
   });
   
   safeAddListener('btn-close-highscores', 'click', () => {
@@ -1775,14 +1868,30 @@
   });
   safeAddListener('btn-pause-settings', 'click', () => {
     AudioManager.playClick();
-    UIManager.showScreen('settings');
-    UIManager.updateSettingsUI();
+    GameManager.openSettingsFromPause();
   });
-  safeAddListener('btn-pause-menu', 'click', () => {
+  safeAddListener('btn-pause-exit', 'click', () => {
     AudioManager.playClick();
-    GameManager.returnToMenu();
+    GameManager.showExitConfirm();
   });
-  
+
+  // Exit confirmation
+  safeAddListener('btn-exit-cancel', 'click', () => {
+    AudioManager.playClick();
+    GameManager.cancelExit();
+  });
+  safeAddListener('btn-exit-confirm', 'click', () => {
+    AudioManager.playClick();
+    GameManager.confirmExit();
+  });
+
+  // PC floating pause button
+  safeAddListener('btn-pc-pause', 'click', () => {
+    AudioManager.init();
+    AudioManager.playClick();
+    if (GameManager.state === 'PLAYING') GameManager.pauseGame();
+  });
+
   safeAddListener('btn-play-again', 'click', () => {
     AudioManager.playClick();
     GameManager.startGame();

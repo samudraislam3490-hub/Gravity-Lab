@@ -69,6 +69,12 @@
             <span id="gravity-notif-text"></span>
           </div>
 
+          <!-- PC Pause Button (shown only in PC mode during gameplay) -->
+          <button class="pc-pause-btn hidden" id="btn-pc-pause" aria-label="Pause Game">
+            <i class="fa-solid fa-pause"></i>
+            <span class="pc-pause-label desktop-hint">ESC</span>
+          </button>
+
           <!-- Score Popups -->
           <div class="score-popups" id="score-popups"></div>
 
@@ -260,7 +266,10 @@
                   </div>
                 </div>
               </div>
-              <div class="overlay-footer">
+              <div class="overlay-footer settings-footer">
+                <button id="btn-settings-back-to-pause" class="btn btn-secondary hidden">
+                  <i class="fa-solid fa-arrow-left"></i> Back to Pause
+                </button>
                 <button id="btn-settings-back" class="btn btn-primary">Done</button>
               </div>
             </div>
@@ -295,21 +304,51 @@
           <div class="game-overlay hidden" id="screen-pause">
             <div class="overlay-content pause-content glass-card">
               <div class="overlay-header">
-                <h2 class="pause-title"><i class="fa-solid fa-pause"></i> PAUSED</h2>
+                <h2 class="pause-title"><i class="fa-solid fa-pause"></i> GAME PAUSED</h2>
               </div>
               <div class="overlay-body pause-body">
+                <div class="pause-score-row">
+                  <div class="pause-stat">
+                    <span class="pause-stat-label">CURRENT SCORE</span>
+                    <span class="pause-stat-value font-mono" id="pause-score">0</span>
+                  </div>
+                  <div class="pause-stat">
+                    <span class="pause-stat-label">HIGH SCORE</span>
+                    <span class="pause-stat-value font-mono" id="pause-highscore">0</span>
+                  </div>
+                </div>
                 <div class="pause-buttons">
-                  <button id="btn-resume" class="btn btn-primary">
+                  <button id="btn-resume" class="btn btn-primary btn-glass">
                     <i class="fa-solid fa-play"></i> Resume
                   </button>
-                  <button id="btn-pause-settings" class="btn btn-secondary">
+                  <button id="btn-pause-settings" class="btn btn-secondary btn-glass">
                     <i class="fa-solid fa-gear"></i> Settings
                   </button>
-                  <button id="btn-pause-menu" class="btn btn-secondary">
-                    <i class="fa-solid fa-house"></i> Main Menu
+                  <button id="btn-pause-exit" class="btn btn-danger btn-glass">
+                    <i class="fa-solid fa-right-from-bracket"></i> Exit Game
                   </button>
                 </div>
-                <p class="pause-hint font-mono"><span class="desktop-hint">Press ESC to resume</span><span class="mobile-hint">Tap Resume to continue</span></p>
+                <p class="pause-hint font-mono"><span class="desktop-hint">Press <kbd>ESC</kbd> to resume</span><span class="mobile-hint">Tap Resume to continue</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Exit Confirmation -->
+          <div class="game-overlay hidden" id="screen-exit-confirm">
+            <div class="overlay-content exit-confirm-content glass-card">
+              <div class="overlay-header">
+                <h2 class="exit-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> EXIT GAME?</h2>
+              </div>
+              <div class="overlay-body exit-confirm-body">
+                <p class="exit-confirm-msg">Leaving now will end your current run.<br>Your score will be recorded.</p>
+                <div class="exit-confirm-buttons">
+                  <button id="btn-exit-cancel" class="btn btn-primary btn-glass">
+                    <i class="fa-solid fa-arrow-left"></i> Continue Playing
+                  </button>
+                  <button id="btn-exit-confirm" class="btn btn-danger btn-glass">
+                    <i class="fa-solid fa-right-from-bracket"></i> Yes, Exit Game
+                  </button>
+                </div>
               </div>
             </div>
           </div>

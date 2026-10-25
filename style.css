@@ -1108,11 +1108,61 @@ kbd {
 }
 
 /* ==========================================================================
-   16. SCREEN: PAUSE
+   16. SCREEN: PAUSE + PC PAUSE BTN + EXIT CONFIRM
    ========================================================================== */
+
+/* Danger button (red) */
+.btn-danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.15));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  transition: all 0.2s ease;
+}
+.btn-danger:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(185, 28, 28, 0.25));
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+  color: #fff;
+}
+.btn-danger:active {
+  transform: scale(0.97);
+}
+
+/* PC Pause button — top-right corner of the game viewport */
+.pc-pause-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 243, 255, 0.25);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.pc-pause-btn:hover {
+  background: rgba(0, 243, 255, 0.12);
+  border-color: rgba(0, 243, 255, 0.5);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+}
+.pc-pause-btn:active { transform: scale(0.95); }
+.pc-pause-label { font-size: 0.65rem; opacity: 0.7; }
+
+/* Hide PC pause btn in Android mode */
+.device-android .pc-pause-btn { display: none !important; }
+
 .pause-content {
-  width: min(340px, 92%);
-  max-height: min(400px, 92%);
+  width: min(360px, 92%);
+  max-height: min(480px, 92vh);
 }
 
 .pause-body {
@@ -1125,6 +1175,38 @@ kbd {
 .pause-title {
   font-size: 1.35rem;
   font-weight: 800;
+  color: var(--neon-cyan);
+  letter-spacing: 1px;
+}
+
+/* Score row inside pause menu */
+.pause-score-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  background: rgba(0, 243, 255, 0.05);
+  border: 1px solid rgba(0, 243, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pause-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pause-stat-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.pause-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
 }
 
 .pause-buttons {
@@ -1132,17 +1214,71 @@ kbd {
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 200px;
+  max-width: 220px;
 }
 
 .pause-buttons .btn {
-  padding: 8px 14px;
+  padding: 9px 14px;
   font-size: 0.9rem;
+  width: 100%;
+  justify-content: center;
 }
 
 .pause-hint {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
+}
+.pause-hint kbd {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.7rem;
+}
+
+/* Exit Confirmation modal */
+.exit-confirm-content {
+  width: min(360px, 92%);
+  max-height: min(360px, 92vh);
+  text-align: center;
+}
+.exit-confirm-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fca5a5;
+}
+.exit-confirm-title i { color: #f87171; }
+.exit-confirm-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.exit-confirm-msg {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.exit-confirm-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 220px;
+}
+.exit-confirm-buttons .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Settings footer with optional Back to Pause */
+.settings-footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 /* ==========================================================================
