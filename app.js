@@ -1812,6 +1812,8 @@
   safeAddListener('btn-menu-settings', 'click', () => {
     AudioManager.init();
     AudioManager.playClick();
+    GameManager.settingsReturnTo = 'menu';
+    if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
     UIManager.showScreen('settings');
     UIManager.updateSettingsUI();
   });
