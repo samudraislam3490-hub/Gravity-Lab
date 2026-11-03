@@ -82,7 +82,7 @@
   ];
 
   const SHAHRIAR_FACTS = [
-    "Shahriar ekjon bhalo chele. Ar or kono girlfriend nai. :')",
+    "Shahriar ekjon bhalo chele. Ar or kono girlfriend nai.",
     "Shahriar er most favourite dessert dish Custard",
     "Shahriar er best friends holo AJFS",
     "Shahriar ei game ta hudai banaise",
@@ -92,7 +92,10 @@
     "Sabit dudh intolerant.",
     "Omayer er duti boro-boro mon royechhe.",
     "Urmi ekta bhalo meye.",
-    "Anika mohashoy bolilen- Nehi bol payi, bas nehi bol payi."
+    "Anika mohashoy bolilen- Nehi bol payi, bas nehi bol payi.",
+    "Mashfiah er chhoto belar nam Guti.",
+    "Amar chhoto bon ekta chhele.",
+    "Shimanto er confidence ei jholshe jay shobar pacha."
   ];
 
   const THEMES = {
@@ -1136,9 +1139,15 @@
         });
       }
     },
-    // --- Independent fact state tracking (no-repeat) ---
+    // Science fact state — simple no-repeat random pick
     _lastScienceFactIdx: -1,
-    _lastShahriarFactIdx: -1,
+
+    // Shahriar fact state — full circular sequential system
+    _shahriarSeq: [],       // randomized array of indices covering all facts exactly once
+    _shahriarSeqPos: 0,     // current position in _shahriarSeq (advances on each click)
+    _lastShahriarStart: -1, // starting index used on the previous menu visit (for diversity)
+
+    // --- helpers ---
 
     _pickRandomNoRepeat(arr, lastIdx) {
       if (arr.length <= 1) return 0;
@@ -1148,6 +1157,44 @@
       } while (idx === lastIdx);
       return idx;
     },
+
+    /** Fisher-Yates shuffle of an array (in-place), returns the array */
+    _shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    },
+
+    /**
+     * Build a new randomized circular sequence for Shahriar facts.
+     * Picks a random starting fact (preferring a different one from last visit),
+     * then shuffles all remaining facts after it so every fact appears exactly once.
+     * Resets the position pointer to 0.
+     */
+    _initShahriarSequence() {
+      const n = SHAHRIAR_FACTS.length;
+      // Choose a start index different from the previous visit's start when possible
+      let startIdx;
+      do {
+        startIdx = Math.floor(Math.random() * n);
+      } while (n > 1 && startIdx === this._lastShahriarStart);
+      this._lastShahriarStart = startIdx;
+
+      // Build ordered index array starting at startIdx
+      const indices = [];
+      for (let i = 0; i < n; i++) {
+        indices.push((startIdx + i) % n);
+      }
+      // Keep index 0 fixed as the chosen start; shuffle the rest
+      const rest = indices.slice(1);
+      this._shuffle(rest);
+      this._shahriarSeq = [indices[0], ...rest];
+      this._shahriarSeqPos = 0;
+    },
+
+    // --- Science facts (unchanged behavior: random no-repeat on every call) ---
 
     updateScienceFact(animate = false) {
       const allScience = [...GRAVITY_FACTS, ...SPACE_FACTS];
@@ -1167,9 +1214,14 @@
       }
     },
 
-    updateShahriarFact(animate = false) {
-      const idx = this._pickRandomNoRepeat(SHAHRIAR_FACTS, this._lastShahriarFactIdx);
-      this._lastShahriarFactIdx = idx;
+    // --- Shahriar facts — sequential circular navigation ---
+
+    /**
+     * Display the current fact in the sequence (no advance).
+     * Used on initial menu load after _initShahriarSequence().
+     */
+    _displayCurrentShahriarFact(animate = false) {
+      const idx = this._shahriarSeq[this._shahriarSeqPos];
       const text = SHAHRIAR_FACTS[idx];
       const el = this.els.shahriarFactText;
       if (!el) return;
@@ -1184,9 +1236,25 @@
       }
     },
 
+    /**
+     * Advance to the next fact in the circular sequence and display it.
+     * Called on each click/tap of the Shahriar fact card.
+     */
+    advanceShahriarFact() {
+      if (this._shahriarSeq.length === 0) this._initShahriarSequence();
+      this._shahriarSeqPos = (this._shahriarSeqPos + 1) % this._shahriarSeq.length;
+      this._displayCurrentShahriarFact(true);
+    },
+
+    /**
+     * Called once per new Main Menu visit.
+     * Generates a fresh randomized sequence and shows the starting fact immediately.
+     * Also updates the science fact (no-repeat random, no animation on load).
+     */
     updateMenuFacts() {
+      this._initShahriarSequence();
+      this._displayCurrentShahriarFact(false);
       this.updateScienceFact(false);
-      this.updateShahriarFact(false);
     }
   };
 
@@ -1645,13 +1713,12 @@
   // 16. MENU CANVAS ANIMATION
   // ==========================================================================
   let menuAnimationId = null;
-  let menuFactInterval = null;
 
   function startMenuAnimation() {
     const menuCanvas = document.getElementById('menu-canvas');
     if (!menuCanvas) return;
     const ctx = menuCanvas.getContext('2d');
-    
+
     function resizeMenuCanvas() {
       if (menuCanvas.parentElement) {
         menuCanvas.width = menuCanvas.parentElement.clientWidth;
@@ -1659,14 +1726,12 @@
       }
     }
     resizeMenuCanvas();
-    
+
+    // Generate a new Shahriar sequence and display the starting fact.
+    // Science fact is also refreshed once (no-repeat random pick).
+    // NO auto-timer — facts only change when the player clicks the card.
     UIManager.updateMenuFacts();
-    if (!menuFactInterval) {
-      menuFactInterval = setInterval(() => {
-        UIManager.updateMenuFacts();
-      }, 7500);
-    }
-    
+
     let lastTime = performance.now();
     function menuLoop(time) {
       const dt = (time - lastTime) / 1000;
@@ -1684,10 +1749,6 @@
     if (menuAnimationId) {
       cancelAnimationFrame(menuAnimationId);
       menuAnimationId = null;
-    }
-    if (menuFactInterval) {
-      clearInterval(menuFactInterval);
-      menuFactInterval = null;
     }
   }
 
@@ -1931,7 +1992,7 @@
       e.preventDefault();
       AudioManager.init();
       AudioManager.playClick();
-      UIManager.updateShahriarFact(true);
+      UIManager.advanceShahriarFact();
     });
     shahriarFactBox.addEventListener('touchstart', (e) => {
       // touchstart fires before click — handled by click via passive
