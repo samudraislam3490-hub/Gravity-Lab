@@ -340,13 +340,34 @@
                 <h2 class="exit-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> EXIT GAME?</h2>
               </div>
               <div class="overlay-body exit-confirm-body">
-                <p class="exit-confirm-msg">Leaving now will end your current run.<br>Your score will be recorded.</p>
+                <p class="exit-confirm-msg">WARNING: Your current game progress will be lost if you return to the Main Menu.<br><br>Are you sure you want to exit?</p>
                 <div class="exit-confirm-buttons">
                   <button id="btn-exit-cancel" class="btn btn-primary btn-glass">
-                    <i class="fa-solid fa-arrow-left"></i> Continue Playing
+                    <i class="fa-solid fa-arrow-left"></i> Cancel
                   </button>
                   <button id="btn-exit-confirm" class="btn btn-danger btn-glass">
-                    <i class="fa-solid fa-right-from-bracket"></i> Yes, Exit Game
+                    <i class="fa-solid fa-right-from-bracket"></i> Yes, Exit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Change Warning (shown when player tries to change a setting while paused) -->
+          <div class="game-overlay hidden" id="screen-settings-warn">
+            <div class="overlay-content settings-warn-content glass-card">
+              <div class="overlay-header">
+                <h2 class="settings-warn-title"><i class="fa-solid fa-triangle-exclamation"></i> WARNING</h2>
+              </div>
+              <div class="overlay-body settings-warn-body">
+                <p class="settings-warn-heading">YOUR CURRENT GAME PROGRESS WILL BE LOST!</p>
+                <p class="settings-warn-msg">Changing settings during an active game will end your current game session. After you finish changing settings and close this screen, you will be returned to the Main Menu. Your current game progress will not be restored.</p>
+                <div class="settings-warn-buttons">
+                  <button id="btn-settings-warn-cancel" class="btn btn-primary btn-glass">
+                    <i class="fa-solid fa-arrow-left"></i> Cancel
+                  </button>
+                  <button id="btn-settings-warn-confirm" class="btn btn-danger btn-glass">
+                    <i class="fa-solid fa-check"></i> Yes, Continue
                   </button>
                 </div>
               </div>

@@ -1272,6 +1272,51 @@ kbd {
   justify-content: center;
 }
 
+/* Settings Change Warning modal */
+.settings-warn-content {
+  width: min(420px, 94%);
+  max-height: min(560px, 94vh);
+  text-align: center;
+}
+.settings-warn-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fca5a5;
+}
+.settings-warn-title i { color: #f87171; }
+.settings-warn-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.settings-warn-heading {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.settings-warn-msg {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: left;
+}
+.settings-warn-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 220px;
+  margin-top: 4px;
+}
+.settings-warn-buttons .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 /* Settings footer with optional Back to Pause */
 .settings-footer {
   display: flex;

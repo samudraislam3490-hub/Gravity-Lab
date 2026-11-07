@@ -967,6 +967,7 @@
       countdown: document.getElementById('screen-countdown'),
       pause: document.getElementById('screen-pause'),
       exitConfirm: document.getElementById('screen-exit-confirm'),
+      settingsWarn: document.getElementById('screen-settings-warn'),
       gameover: document.getElementById('screen-gameover')
     },
     els: {
@@ -1508,18 +1509,22 @@
       }, 1000);
     },
     
-    // Tracks where to return after closing Settings
-    settingsReturnTo: 'menu', // 'menu' | 'pause'
+    // Tracks where to return after closing Settings: 'menu' | 'pause'
+    settingsReturnTo: 'menu',
+
+    // Settings-from-pause warning state
+    // true  = player has approved a setting change this Settings visit → go to Menu on close
+    // false = no change approved → go back to Pause on close
+    _settingsChangeApproved: false,
+    // Pending setting callback to run once player confirms the warning
+    _pendingSettingApply: null,
 
     pauseGame() {
       if (this.state !== 'PLAYING') return;
       this.state = 'PAUSED';
-      // Freeze all movement keys so player doesn't teleport on resume
       Object.keys(keys).forEach(k => { keys[k] = false; });
-      // Update pause score display
       if (UIManager.els.pauseScore) UIManager.els.pauseScore.textContent = ScoreManager.score;
       if (UIManager.els.pauseHighScore) UIManager.els.pauseHighScore.textContent = SettingsManager.getHighScore();
-      // Hide PC pause btn while paused (it's inside a screen overlay)
       this._hidePCPauseBtn();
       UIManager.showScreen('pause');
     },
@@ -1527,7 +1532,6 @@
     resumeGame() {
       if (this.state !== 'PAUSED') return;
       this.state = 'PLAYING';
-      // Freeze all keys again on resume to avoid phantom keypresses
       Object.keys(keys).forEach(k => { keys[k] = false; });
       UIManager.hideAllScreens();
       this._showPCPauseBtn();
@@ -1535,13 +1539,58 @@
 
     openSettingsFromPause() {
       this.settingsReturnTo = 'pause';
-      // Show 'Back to Pause' button, hide it on normal settings open
+      this._settingsChangeApproved = false;  // reset per-visit flag
+      this._pendingSettingApply = null;
       if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.remove('hidden');
       UIManager.showScreen('settings');
       UIManager.updateSettingsUI();
     },
 
-    closeSettingsReturnToPause() {
+    /**
+     * Called whenever a settings control is interacted with.
+     * If we're in settings-from-pause mode and not yet approved, show the warning.
+     * applyFn is the callback that actually applies the change — it runs after approval.
+     * Returns true if the change should proceed immediately (approved or from menu).
+     */
+    requestSettingChange(applyFn) {
+      if (this.settingsReturnTo !== 'pause') {
+        // From main menu — apply immediately, no warning
+        applyFn();
+        return;
+      }
+      if (this._settingsChangeApproved) {
+        // Already approved this visit — apply immediately
+        applyFn();
+        return;
+      }
+      // Need to show the warning first
+      this._pendingSettingApply = applyFn;
+      UIManager.showScreen('settingsWarn');
+    },
+
+    /** Player pressed CANCEL on the settings-change warning → back to pause, no change */
+    cancelSettingChangeWarning() {
+      this._pendingSettingApply = null;
+      // Go straight back to Pause Menu (close both warning and settings)
+      this.closeSettingsGoToPause();
+    },
+
+    /** Player pressed YES on the settings-change warning → apply pending change, mark approved */
+    confirmSettingChangeWarning() {
+      this._settingsChangeApproved = true;
+      const fn = this._pendingSettingApply;
+      this._pendingSettingApply = null;
+      // Re-show settings screen (warning was on top)
+      UIManager.showScreen('settings');
+      UIManager.updateSettingsUI();
+      // Apply the pending change
+      if (fn) fn();
+    },
+
+    /** Close settings and return to Pause Menu (no changes approved) */
+    closeSettingsGoToPause() {
+      this._settingsChangeApproved = false;
+      this._pendingSettingApply = null;
       this.settingsReturnTo = 'menu';
       if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
       this.state = 'PAUSED';
@@ -1550,21 +1599,51 @@
       UIManager.showScreen('pause');
     },
 
+    /** Close settings after approved changes → discard paused game, go to Main Menu */
+    closeSettingsGoToMenu() {
+      this._settingsChangeApproved = false;
+      this._pendingSettingApply = null;
+      this.settingsReturnTo = 'menu';
+      if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
+      // Fully discard the paused game and go to menu
+      this.player = null;
+      this.returnToMenu();
+    },
+
+    /** Smart close for Settings — called by X / Done / Back buttons */
+    closeSettings() {
+      if (this.settingsReturnTo === 'pause') {
+        if (this._settingsChangeApproved) {
+          this.closeSettingsGoToMenu();
+        } else {
+          this.closeSettingsGoToPause();
+        }
+      } else {
+        this.returnToMenu();
+      }
+    },
+
+    closeSettingsReturnToPause() {
+      // Legacy alias — just call closeSettings which now handles everything
+      this.closeSettings();
+    },
+
     showExitConfirm() {
-      // Keep state as PAUSED; only switch screen
       UIManager.showScreen('exitConfirm');
     },
 
     cancelExit() {
-      // Return to pause menu
       if (UIManager.els.pauseScore) UIManager.els.pauseScore.textContent = ScoreManager.score;
       if (UIManager.els.pauseHighScore) UIManager.els.pauseHighScore.textContent = SettingsManager.getHighScore();
       UIManager.showScreen('pause');
     },
 
     confirmExit() {
-      // Treat exit as a loss — run the normal game-over flow
-      this.gameOver();
+      // Voluntary exit — go DIRECTLY to Main Menu, do NOT trigger Game Over screen
+      this.state = 'MENU'; // set before returnToMenu to avoid guards
+      this._hidePCPauseBtn();
+      this.player = null;
+      this.returnToMenu();
     },
 
     gameOver() {
@@ -1585,6 +1664,8 @@
     returnToMenu() {
       this.state = 'MENU';
       this.settingsReturnTo = 'menu';
+      this._settingsChangeApproved = false;
+      this._pendingSettingApply = null;
       this._hidePCPauseBtn();
       if (UIManager.els.settingsBackToPause) UIManager.els.settingsBackToPause.classList.add('hidden');
       UIManager.showScreen('menu');
@@ -1852,12 +1933,6 @@
     GameManager.returnToMenu();
   });
 
-  safeAddListener('btn-change-device', 'click', () => {
-    AudioManager.playClick();
-    GameManager.state = 'DEVICE_SELECT';
-    UIManager.showScreen('device');
-  });
-
   safeAddListener('btn-play', 'click', () => {
     AudioManager.init();
     AudioManager.playClick();
@@ -1895,27 +1970,20 @@
     GameManager.returnToMenu();
   });
   
+  // Settings close/back — smart: returns to pause (no change) or menu (change approved)
   safeAddListener('btn-close-settings', 'click', () => {
     AudioManager.playClick();
-    if (GameManager.settingsReturnTo === 'pause') {
-      GameManager.closeSettingsReturnToPause();
-    } else {
-      GameManager.returnToMenu();
-    }
+    GameManager.closeSettings();
   });
   safeAddListener('btn-settings-back', 'click', () => {
     AudioManager.playClick();
-    if (GameManager.settingsReturnTo === 'pause') {
-      GameManager.closeSettingsReturnToPause();
-    } else {
-      GameManager.returnToMenu();
-    }
+    GameManager.closeSettings();
   });
   safeAddListener('btn-settings-back-to-pause', 'click', () => {
     AudioManager.playClick();
-    GameManager.closeSettingsReturnToPause();
+    GameManager.closeSettings();
   });
-  
+
   safeAddListener('btn-close-highscores', 'click', () => {
     AudioManager.playClick();
     GameManager.returnToMenu();
@@ -1924,7 +1992,7 @@
     AudioManager.playClick();
     GameManager.returnToMenu();
   });
-  
+
   safeAddListener('btn-resume', 'click', () => {
     AudioManager.playClick();
     GameManager.resumeGame();
@@ -1948,6 +2016,16 @@
     GameManager.confirmExit();
   });
 
+  // Settings change warning popup
+  safeAddListener('btn-settings-warn-cancel', 'click', () => {
+    AudioManager.playClick();
+    GameManager.cancelSettingChangeWarning();
+  });
+  safeAddListener('btn-settings-warn-confirm', 'click', () => {
+    AudioManager.playClick();
+    GameManager.confirmSettingChangeWarning();
+  });
+
   // PC floating pause button
   safeAddListener('btn-pc-pause', 'click', () => {
     AudioManager.init();
@@ -1964,12 +2042,14 @@
     GameManager.returnToMenu();
   });
 
-  // Music ON/OFF Button Toggle
+  // Music ON/OFF Button Toggle — intercepted for settings-change warning
   safeAddListener('btn-toggle-music', 'click', () => {
     AudioManager.init();
     AudioManager.playClick();
-    MusicManager.toggle();
-    UIManager.updateSettingsUI();
+    GameManager.requestSettingChange(() => {
+      MusicManager.toggle();
+      UIManager.updateSettingsUI();
+    });
   });
 
   // --- Clickable Random Fact Cards (Independent) ---
@@ -1999,14 +2079,28 @@
     }, { passive: true });
   }
 
-  // Settings Volume Sliders
+  // Settings Volume Sliders — intercepted for settings-change warning when from pause
   const musicSlider = document.getElementById('settings-music-volume');
   if (musicSlider) {
+    // We intercept on 'change' (after drag ends) rather than 'input' so we capture
+    // the intended final value. For immediate preview we still update live when approved.
+    let _musicSliderPendingVal = null;
     musicSlider.addEventListener('input', (e) => {
+      _musicSliderPendingVal = parseInt(e.target.value);
+      if (GameManager.settingsReturnTo !== 'pause' || GameManager._settingsChangeApproved) {
+        // Apply immediately
+        MusicManager.setVolume(_musicSliderPendingVal);
+        const valDisplay = document.getElementById('settings-music-value');
+        if (valDisplay) valDisplay.textContent = `${_musicSliderPendingVal}%`;
+      }
+    });
+    musicSlider.addEventListener('change', (e) => {
       const val = parseInt(e.target.value);
-      MusicManager.setVolume(val);
-      const valDisplay = document.getElementById('settings-music-value');
-      if (valDisplay) valDisplay.textContent = `${val}%`;
+      GameManager.requestSettingChange(() => {
+        MusicManager.setVolume(val);
+        const valDisplay = document.getElementById('settings-music-value');
+        if (valDisplay) valDisplay.textContent = `${val}%`;
+      });
     });
   }
 
@@ -2014,22 +2108,32 @@
   if (sfxSlider) {
     sfxSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
-      SettingsManager.set('sfxVolume', val);
-      const valDisplay = document.getElementById('settings-sfx-value');
-      if (valDisplay) valDisplay.textContent = `${val}%`;
+      if (GameManager.settingsReturnTo !== 'pause' || GameManager._settingsChangeApproved) {
+        SettingsManager.set('sfxVolume', val);
+        const valDisplay = document.getElementById('settings-sfx-value');
+        if (valDisplay) valDisplay.textContent = `${val}%`;
+      }
     });
-    sfxSlider.addEventListener('change', () => {
-      AudioManager.init();
-      AudioManager.playClick();
+    sfxSlider.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value);
+      GameManager.requestSettingChange(() => {
+        SettingsManager.set('sfxVolume', val);
+        const valDisplay = document.getElementById('settings-sfx-value');
+        if (valDisplay) valDisplay.textContent = `${val}%`;
+        AudioManager.init();
+        AudioManager.playClick();
+      });
     });
   }
 
   const ballColorInput = document.getElementById('settings-ball-color');
   if (ballColorInput) {
-    ballColorInput.addEventListener('input', (e) => {
+    ballColorInput.addEventListener('change', (e) => {
       const val = e.target.value;
-      SettingsManager.set('ballColor', val);
-      if (UIManager.els.colorPreview) UIManager.els.colorPreview.style.backgroundColor = val;
+      GameManager.requestSettingChange(() => {
+        SettingsManager.set('ballColor', val);
+        if (UIManager.els.colorPreview) UIManager.els.colorPreview.style.backgroundColor = val;
+      });
     });
   }
 
@@ -2041,9 +2145,23 @@
       AudioManager.init();
       AudioManager.playClick();
       const theme = btn.dataset.theme;
-      SettingsManager.set('theme', theme);
-      SpaceRenderer.setTheme(theme);
-      UIManager.updateSettingsUI();
+      GameManager.requestSettingChange(() => {
+        SettingsManager.set('theme', theme);
+        SpaceRenderer.setTheme(theme);
+        UIManager.updateSettingsUI();
+      });
+    });
+  }
+
+  // Device change button — also intercepted
+  const changeDeviceBtn = document.getElementById('btn-change-device');
+  if (changeDeviceBtn) {
+    changeDeviceBtn.addEventListener('click', () => {
+      AudioManager.playClick();
+      GameManager.requestSettingChange(() => {
+        GameManager.state = 'DEVICE_SELECT';
+        UIManager.showScreen('device');
+      });
     });
   }
 
